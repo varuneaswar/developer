@@ -1,0 +1,25 @@
+# APScheduler Oracle Job Scheduling Module - Dependencies
+
+# Core scheduler
+APScheduler>=3.10.0
+
+# Flask for REST API
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# Database
+SQLAlchemy>=2.0.0
+cx_Oracle>=8.3.0
+
+# Timezone support
+pytz>=2023.3
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Development
+flake8>=6.0.0
+black>=23.3.0
+mypy>=1.4.0
