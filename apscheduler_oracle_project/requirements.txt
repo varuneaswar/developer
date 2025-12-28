@@ -1,0 +1,20 @@
+# APScheduler Oracle Integration Requirements
+
+# Core Dependencies
+apscheduler==3.10.4
+flask==3.0.0
+python-dotenv==1.0.0
+pytz==2024.1
+
+# Database Driver for Oracle
+cx_Oracle==8.3.0
+SQLAlchemy==2.0.23
+
+# Testing Dependencies
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Development Dependencies
+black==23.12.1
+flake8==6.1.0
