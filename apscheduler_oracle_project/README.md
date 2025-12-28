@@ -7,6 +7,7 @@ A comprehensive Python module for dynamic job scheduling with Oracle database ba
 - **Dynamic Job Scheduling**: Schedule Bash and Python scripts with date/time-based triggers
 - **Oracle Database Backend**: Persistent job storage using Oracle database
 - **REST API**: Full-featured Flask-based API for job management
+- **Interactive API Documentation**: Swagger UI for exploring and testing API endpoints
 - **Job Management**: Add, remove, pause, resume, and list scheduled jobs
 - **Flexible Configuration**: Environment-based configuration with `.env` support
 - **Comprehensive Logging**: Detailed logging for auditing and debugging
@@ -123,6 +124,23 @@ The application will:
 1. Initialize the scheduler with Oracle database backend
 2. Start the Flask API server on the configured host and port
 3. Begin accepting job scheduling requests
+4. Make Swagger UI documentation available at the root URL
+
+### Accessing Swagger UI Documentation
+
+Once the application is running, you can access the interactive API documentation through Swagger UI:
+
+- **Swagger UI**: Open your browser and navigate to `http://localhost:5000/` or `http://localhost:5000/docs`
+- **OpenAPI Spec**: The OpenAPI/Swagger JSON specification is available at `http://localhost:5000/api/swagger.json`
+
+The Swagger UI provides:
+- Interactive API documentation with "Try it out" functionality
+- Complete list of all available endpoints
+- Request/response models and examples
+- Parameter descriptions and validation rules
+- Response codes and error messages
+
+**Note**: Replace `localhost:5000` with your configured `FLASK_HOST` and `FLASK_PORT` if different.
 
 ### API Endpoints
 
