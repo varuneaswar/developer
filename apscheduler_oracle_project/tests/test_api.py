@@ -337,5 +337,75 @@ class TestErrorHandlers:
         response = client.get("/api/nonexistent-endpoint")
 
         assert response.status_code == 404
+        # Flask-RESTX returns HTML for 404 on non-API routes
+        assert b"Not Found" in response.data or b"404" in response.data
+
+
+class TestSwaggerDocumentation:
+    """Tests for Swagger documentation endpoints."""
+
+    def test_swagger_ui_root(self, client):
+        """Test Swagger UI is accessible at root path."""
+        response = client.get("/")
+
+        assert response.status_code == 200
+        assert b"swagger" in response.data.lower() or b"api" in response.data.lower()
+        # Check for typical Swagger UI elements
+        assert b"<!DOCTYPE html>" in response.data or b"<html" in response.data
+
+    def test_swagger_ui_docs_redirect(self, client):
+        """Test /docs redirects to Swagger UI at root."""
+        response = client.get("/docs", follow_redirects=False)
+
+        assert response.status_code == 302
+        assert response.location == "/"
+
+    def test_swagger_ui_docs_follows_redirect(self, client):
+        """Test /docs redirect leads to Swagger UI."""
+        response = client.get("/docs", follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b"swagger" in response.data.lower() or b"api" in response.data.lower()
+
+    def test_swagger_json_spec(self, client):
+        """Test Swagger JSON specification is accessible."""
+        response = client.get("/api/swagger.json")
+
+        assert response.status_code == 200
         data = response.get_json()
-        assert "Endpoint not found" in data["error"]
+        assert data is not None
+        assert "swagger" in data or "openapi" in data
+        assert "info" in data
+        assert "paths" in data
+
+    def test_swagger_spec_contains_endpoints(self, client):
+        """Test Swagger spec contains documented API endpoints."""
+        response = client.get("/api/swagger.json")
+
+        data = response.get_json()
+        paths = data.get("paths", {})
+
+        # Check that all our endpoints are documented
+        assert "/health" in paths
+        assert "/schedule-job" in paths
+        assert "/remove-job/{job_id}" in paths
+        assert "/jobs" in paths
+        assert "/pause-job/{job_id}" in paths
+        assert "/resume-job/{job_id}" in paths
+        assert "/job/{job_id}" in paths
+
+    def test_swagger_spec_methods(self, client):
+        """Test Swagger spec contains correct HTTP methods for endpoints."""
+        response = client.get("/api/swagger.json")
+
+        data = response.get_json()
+        paths = data.get("paths", {})
+
+        # Verify HTTP methods
+        assert "get" in paths["/health"]
+        assert "post" in paths["/schedule-job"]
+        assert "delete" in paths["/remove-job/{job_id}"]
+        assert "get" in paths["/jobs"]
+        assert "put" in paths["/pause-job/{job_id}"]
+        assert "put" in paths["/resume-job/{job_id}"]
+        assert "get" in paths["/job/{job_id}"]
