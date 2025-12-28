@@ -3,7 +3,7 @@ REST API for job management using Flask-RESTX with Swagger UI.
 Provides endpoints for scheduling, removing, pausing, resuming, and listing jobs.
 """
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_restx import Api, Resource, fields
 
 from app.config import Config
@@ -162,7 +162,7 @@ class ScheduleJob(Resource):
     @ns.response(500, 'Internal server error', error_response_model)
     def post(self):
         """Schedule a new job"""
-        data = api.payload
+        data = api.payload or {}
 
         # Validate required fields
         required_fields = ["job_id", "job_type", "script_path", "run_date"]
@@ -224,9 +224,6 @@ class RemoveJob(Resource):
     @ns.response(500, 'Internal server error', error_response_model)
     def delete(self, job_id):
         """Remove a scheduled job"""
-        if not job_id:
-            return {"error": "job_id is required"}, 400
-
         # Check if job exists
         job = scheduler_manager.get_job(job_id)
         if not job:
@@ -271,9 +268,6 @@ class PauseJob(Resource):
     @ns.response(500, 'Internal server error', error_response_model)
     def put(self, job_id):
         """Pause a scheduled job"""
-        if not job_id:
-            return {"error": "job_id is required"}, 400
-
         # Check if job exists
         job = scheduler_manager.get_job(job_id)
         if not job:
@@ -301,9 +295,6 @@ class ResumeJob(Resource):
     @ns.response(500, 'Internal server error', error_response_model)
     def put(self, job_id):
         """Resume a paused job"""
-        if not job_id:
-            return {"error": "job_id is required"}, 400
-
         # Check if job exists
         job = scheduler_manager.get_job(job_id)
         if not job:
@@ -331,9 +322,6 @@ class GetJob(Resource):
     @ns.response(500, 'Internal server error', error_response_model)
     def get(self, job_id):
         """Get details of a specific job"""
-        if not job_id:
-            return {"error": "job_id is required"}, 400
-
         job = scheduler_manager.get_job(job_id)
 
         if job:
@@ -346,7 +334,6 @@ class GetJob(Resource):
 @app.route('/docs')
 def docs_redirect():
     """Redirect /docs to Swagger UI at root"""
-    from flask import redirect
     return redirect('/', code=302)
 
 
