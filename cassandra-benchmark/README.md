@@ -20,7 +20,7 @@ A comprehensive benchmarking framework for Apache Cassandra database using the T
 ### Core Capabilities
 
 - **TPC-C Data Model**: Full implementation of TPC-C schema adapted for Cassandra best practices
-- **20+ Benchmark Queries**: Categorized by operation type (SELECT, INSERT, UPDATE, DELETE) and complexity (Simple, Medium, Complex)
+- **80 Benchmark Queries**: **20 queries for each operation type** (SELECT, INSERT, UPDATE, DELETE) categorized by complexity (Simple, Medium, Complex)
 - **Concurrent Execution**: Configurable concurrency levels (10-500+ concurrent connections)
 - **Load Patterns**: Support for constant, ramp-up, spike, and wave load patterns
 - **Soak Testing**: Duration-based execution for extended testing (hours to days)
@@ -36,6 +36,11 @@ A comprehensive benchmarking framework for Apache Cassandra database using the T
 - Async execution support
 - Lightweight Transactions (LWT) support
 - Batch operations following Cassandra best practices
+- Collection types (Set, List, Map)
+- Counter columns
+- User Defined Types (UDT)
+- Static columns
+- TTL and Timestamps
 - Real-time console output and logging
 
 ## Architecture
@@ -199,58 +204,141 @@ metrics:
 
 ## Query Catalog
 
-The framework includes 24+ queries across different categories:
+The framework includes **80 queries** with **20 queries for each operation type**, covering comprehensive Cassandra concepts:
 
-### SELECT Queries (10 queries)
+### SELECT Queries (20 queries)
 
-#### Simple (4 queries)
-- **S1**: Select warehouse by ID
-- **S2**: Select customer by ID
-- **S3**: Select item by ID
-- **S4**: Select district by ID
+**Simple Queries (S1-S6):**
+- **S1**: Warehouse by ID - partition key lookup
+- **S2**: Customer by ID - composite partition key
+- **S3**: Item by ID - simple partition
+- **S4**: District by ID - partition + clustering
+- **S5**: Orders range - clustering key range
+- **S6**: Warehouses IN - partition key IN clause
 
-#### Medium (4 queries)
-- **M1**: Select customers by district
-- **M2**: Select stock level
-- **M3**: Select orders by customer
-- **M4**: Select order lines
+**Medium Queries (S7, S11, S13, M1-M4):**
+- **S7**: Customer with token - token-based pagination
+- **S11**: Order lines range - clustering range
+- **S13**: Districts multi-warehouse - multi-partition IN
+- **M1**: Customers by district - multi-row partition
+- **M2**: Stock level - business logic query
+- **M3**: Orders by customer - denormalized table query
+- **M4**: Order lines - partition query
 
-#### Complex (4 queries)
-- **C1**: Select customers by name
-- **C2**: Select new orders
-- **C3**: Select history by date range
-- **C4**: Select customers by credit status
+**Complex Queries (S8, S9, S10, S12, C1-C4):**
+- **S8**: Items with filter - ALLOW FILTERING
+- **S9**: Order count - COUNT aggregation
+- **S10**: Customer projection - column selection
+- **S12**: Orders by carrier - secondary index
+- **C1**: Customers by name - denormalized query
+- **C2**: New orders - multi-row query
+- **C3**: History by date range - time-series
+- **C4**: Customers by credit - secondary index
 
-### INSERT Queries (7 queries)
+### INSERT Queries (20 queries)
 
-- **I1**: Insert customer
-- **I2**: Insert order
-- **I3**: Insert history
-- **I4**: Batch insert order lines
-- **I5**: Insert history with TTL
-- **I6**: Insert new order with LWT
-- **I7**: Insert customer with denormalization
+**Simple Queries (I1-I3, I9, I20):**
+- **I1**: Customer - basic insert
+- **I2**: Order - denormalized insert
+- **I3**: History - time-series insert
+- **I9**: Counter - counter column update
+- **I20**: Warehouse counter - counter increment
 
-### UPDATE Queries (8 queries)
+**Medium Queries (I4-I5, I8, I10-I15, I19):**
+- **I4**: Order lines batch - batch operation
+- **I5**: History with TTL - TTL insert
+- **I8**: Customer collections - set/list/map
+- **I10**: Customer with UDT - User Defined Type
+- **I11**: Product with static - static column
+- **I12**: Inventory log TTL - TTL insert
+- **I13**: Orders batch logged - LOGGED batch
+- **I14**: Tracking batch unlogged - UNLOGGED batch
+- **I15**: Order with timestamp - custom timestamp
+- **I19**: Activity JSON - JSON insert
 
-- **U1**: Update customer balance
-- **U2**: Update stock quantity
-- **U3**: Update district next order
-- **U4**: Update order carrier (conditional)
-- **U5**: Update customer credit (conditional)
-- **U6**: Batch update stocks
-- **U7**: Update stock with LWT
-- **U8**: Batch update order and customer
+**Complex Queries (I6-I7, I16-I18):**
+- **I6**: New order LWT - Lightweight Transaction
+- **I7**: Customer denormalization - multi-table
+- **I16**: Item all types - all collections
+- **I17**: Multiple tables - denormalization pattern
+- **I18**: LWT condition - conditional insert
 
-### DELETE Queries (7 queries)
+### UPDATE Queries (20 queries)
 
-- **D1**: Delete order line
-- **D2**: Delete new order
-- **D3**: Delete new order (conditional)
-- **D4**: Delete old history records
-- **D5**: Delete all order lines
-- **D6**: Delete order with lines (batch)
-- **D7**: Batch delete new orders
+**Simple Queries (U1-U3, U15):**
+- **U1**: Customer balance - basic update
+- **U2**: Stock quantity - basic update
+- **U3**: District next order - basic update
+- **U15**: Metrics counter - counter update
+
+**Medium Queries (U4, U6-U7, U9-U14, U16, U18):**
+- **U4**: Order carrier conditional - conditional update
+- **U6**: Stocks batch - batch update
+- **U7**: Customer credit conditional - conditional
+- **U9**: Customer add phone - set collection add
+- **U10**: Preferences map - map update
+- **U11**: Append email - list append
+- **U12**: Remove phone - set remove
+- **U13**: Order with TTL - TTL update
+- **U14**: Customer with timestamp - timestamp
+- **U16**: Multiple fields - multi-column
+- **U18**: Static column - static update
+
+**Complex Queries (U5, U8, U17, U19-U20):**
+- **U5**: Stock with LWT - LWT validation
+- **U8**: Order and customer batch - multi-table
+- **U17**: Collection with TTL - collection + TTL
+- **U19**: LWT multiple conditions - complex LWT
+- **U20**: Batch unlogged - UNLOGGED batch
+
+### DELETE Queries (20 queries)
+
+**Simple Queries (D1-D2, D8):**
+- **D1**: Order line - basic delete
+- **D2**: New order - basic delete
+- **D8**: Specific column - column delete
+
+**Medium Queries (D3, D5, D9-D13, D17):**
+- **D3**: New order conditional - IF EXISTS
+- **D5**: Old history records - time-series delete
+- **D9**: Set collection - set element remove
+- **D10**: Map by key - map key remove
+- **D11**: List by index - list index remove
+- **D12**: With timestamp - timestamp delete
+- **D13**: Static column - static delete
+- **D17**: Expired records - cleanup
+
+**Complex Queries (D4, D6-D7, D14-D16, D18-D20):**
+- **D4**: All order lines - partition delete
+- **D6**: Order with lines batch - multi-table
+- **D7**: Multiple new orders - batch delete
+- **D14**: Clustering range - range delete
+- **D15**: With IN clause - IN delete
+- **D16**: LWT condition - conditional delete
+- **D18**: Batch logged - LOGGED batch
+- **D19**: Batch unlogged - UNLOGGED batch
+- **D20**: Partition delete - full partition
+
+### Cassandra Concepts Covered
+
+✅ Partition keys & clustering keys  
+✅ Secondary indexes  
+✅ Denormalized tables  
+✅ Time-series patterns  
+✅ Collections (Set, List, Map)  
+✅ Counter columns  
+✅ User Defined Types (UDT)  
+✅ Static columns  
+✅ TTL (Time To Live)  
+✅ Timestamps  
+✅ Lightweight Transactions (LWT)  
+✅ Batch operations (LOGGED/UNLOGGED)  
+✅ Token-based pagination  
+✅ ALLOW FILTERING  
+✅ IN clauses  
+✅ Range queries  
+✅ JSON support  
+✅ Column-level operations  
 
 ## Usage Guide
 

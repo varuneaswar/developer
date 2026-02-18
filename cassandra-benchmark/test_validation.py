@@ -24,17 +24,17 @@ class TestQueryDefinitions(unittest.TestCase):
         self.query_defs = QueryDefinitions()
     
     def test_total_queries(self):
-        """Test that we have 20+ queries defined."""
+        """Test that we have 80 queries defined (20 for each type)."""
         queries = self.query_defs.get_all_queries()
-        self.assertGreaterEqual(len(queries), 20, 
-                               f"Expected 20+ queries, got {len(queries)}")
+        self.assertEqual(len(queries), 80, 
+                        f"Expected 80 queries (20 per type), got {len(queries)}")
     
     def test_query_types(self):
-        """Test that all query types are represented."""
+        """Test that all query types have exactly 20 queries."""
         for query_type in QueryType:
             queries = self.query_defs.get_queries_by_type(query_type)
-            self.assertGreater(len(queries), 0, 
-                             f"No queries found for type {query_type.value}")
+            self.assertEqual(len(queries), 20, 
+                           f"Expected 20 queries for type {query_type.value}, got {len(queries)}")
     
     def test_complexity_levels(self):
         """Test that all complexity levels are represented."""
@@ -53,9 +53,10 @@ class TestQueryDefinitions(unittest.TestCase):
         self.assertIn('update', counts)
         self.assertIn('delete', counts)
         
-        # Check that SELECT queries are most numerous (per typical TPC-C)
-        self.assertGreater(counts['select'], 8, 
-                          f"Expected 8+ SELECT queries, got {counts['select']}")
+        # Check that each type has exactly 20 queries
+        for query_type, count in counts.items():
+            self.assertEqual(count, 20, 
+                           f"Expected 20 {query_type} queries, got {count}")
     
     def test_query_counts_by_complexity(self):
         """Test query count breakdown by complexity."""
