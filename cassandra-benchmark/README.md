@@ -105,6 +105,52 @@ cassandra:
   contact_points: ["127.0.0.1"]
   port: 9042
   keyspace: "tpcc_benchmark"
+```
+
+### 2. Setup Schema
+
+```bash
+python main.py setup-schema
+```
+
+### 3. Generate Data
+
+```bash
+# Generate sample data (100 customers)
+python main.py generate-data --sample-only
+
+# Or generate full dataset
+python main.py generate-data
+```
+
+### 4. Run Benchmark
+
+```bash
+# Run full benchmark
+python main.py run-benchmark
+
+# Or run specific query type
+python main.py run-query select --iterations 100
+```
+
+### 5. View CQL Queries
+
+**Physical CQL reference files** are available in `queries/cql_reference/`:
+
+```bash
+# View SELECT queries
+cat queries/cql_reference/select_queries.cql
+
+# Use in cqlsh
+cqlsh> USE tpcc_benchmark;
+cqlsh:tpcc_benchmark> SELECT * FROM warehouse WHERE w_id = 1;
+```
+
+See [CQL Reference Guide](queries/cql_reference/README.md) for all 80 queries with examples.
+
+## Configuration
+  port: 9042
+  keyspace: "tpcc_benchmark"
   username: "cassandra"
   password: "cassandra"
 ```
@@ -204,7 +250,21 @@ metrics:
 
 ## Query Catalog
 
-The framework includes **80 queries** with **20 queries for each operation type**, covering comprehensive Cassandra concepts:
+The framework includes **80 queries** with **20 queries for each operation type**, covering comprehensive Cassandra concepts.
+
+### 📄 CQL Reference Files
+
+**Physical CQL query files are available in `queries/cql_reference/` for easy reference and direct use in cqlsh:**
+
+- **`select_queries.cql`** - All 20 SELECT queries
+- **`insert_queries.cql`** - All 20 INSERT queries  
+- **`update_queries.cql`** - All 20 UPDATE queries
+- **`delete_queries.cql`** - All 20 DELETE queries
+- **`README.md`** - Complete guide to using CQL reference files
+
+These files contain the actual CQL syntax with both parameterized versions (for prepared statements) and examples with real values that can be run directly in cqlsh. See [CQL Reference Guide](queries/cql_reference/README.md) for details.
+
+### Query Overview
 
 ### SELECT Queries (20 queries)
 
