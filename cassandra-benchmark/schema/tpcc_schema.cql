@@ -203,3 +203,106 @@ CREATE INDEX IF NOT EXISTS idx_customer_credit ON customer (c_credit);
 
 -- Index for order carrier tracking
 CREATE INDEX IF NOT EXISTS idx_order_carrier ON orders (o_carrier_id);
+
+-- ========== ADVANCED CASSANDRA FEATURES TABLES ==========
+
+-- User Defined Type for Address
+CREATE TYPE IF NOT EXISTS address_type (
+    street_1 text,
+    street_2 text,
+    city text,
+    state text,
+    zip text
+);
+
+-- CUSTOMER_EXTENDED table with collections and UDT
+-- Demonstrates: collections (list, set, map), UDT, static columns
+CREATE TABLE IF NOT EXISTS customer_extended (
+    c_w_id int,
+    c_d_id int,
+    c_id int,
+    c_name text,
+    c_address frozen<address_type>,
+    c_phone_numbers set<text>,           -- Set collection
+    c_email_history list<text>,          -- List collection
+    c_preferences map<text, text>,       -- Map collection
+    c_tags set<text>,                    -- Another set for filtering
+    c_notes list<text>,                  -- List for updates
+    district_customer_count counter STATIC,  -- Static counter column
+    c_created timestamp,
+    c_updated timestamp,
+    PRIMARY KEY ((c_w_id, c_d_id), c_id)
+);
+
+-- COUNTERS table for various metrics
+-- Demonstrates: counter columns
+CREATE TABLE IF NOT EXISTS warehouse_metrics (
+    w_id int,
+    metric_name text,
+    metric_value counter,
+    PRIMARY KEY (w_id, metric_name)
+);
+
+-- PRODUCT_CATALOG table with static columns
+-- Demonstrates: static columns, collections
+CREATE TABLE IF NOT EXISTS product_catalog (
+    category_id int,
+    category_name text STATIC,
+    category_description text STATIC,
+    product_id int,
+    product_name text,
+    product_tags set<text>,
+    product_specs map<text, text>,
+    product_reviews list<text>,
+    PRIMARY KEY (category_id, product_id)
+);
+
+-- ORDER_TRACKING table for range queries
+-- Demonstrates: clustering key ranges, time-series
+CREATE TABLE IF NOT EXISTS order_tracking (
+    o_w_id int,
+    o_status text,
+    o_timestamp timestamp,
+    o_id int,
+    o_details text,
+    o_tags set<text>,
+    PRIMARY KEY ((o_w_id, o_status), o_timestamp, o_id)
+) WITH CLUSTERING ORDER BY (o_timestamp DESC, o_id DESC);
+
+-- INVENTORY_LOG table for TTL testing
+-- Demonstrates: TTL, collections
+CREATE TABLE IF NOT EXISTS inventory_log (
+    i_w_id int,
+    i_id int,
+    log_timestamp timestamp,
+    log_type text,
+    log_message text,
+    log_metadata map<text, text>,
+    PRIMARY KEY ((i_w_id, i_id), log_timestamp)
+) WITH CLUSTERING ORDER BY (log_timestamp DESC);
+
+-- WAREHOUSE_STATS table for aggregate data
+-- Demonstrates: static columns, counters, collections
+CREATE TABLE IF NOT EXISTS warehouse_stats (
+    w_id int,
+    stat_date text,
+    total_orders counter,
+    total_revenue counter,
+    active_customers set<int> STATIC,
+    top_products list<int> STATIC,
+    PRIMARY KEY (w_id, stat_date)
+);
+
+-- CUSTOMER_ACTIVITY table for token pagination
+-- Demonstrates: large partition queries, token-based pagination
+CREATE TABLE IF NOT EXISTS customer_activity (
+    c_id int,
+    activity_timestamp timestamp,
+    activity_type text,
+    activity_details map<text, text>,
+    PRIMARY KEY (c_id, activity_timestamp)
+) WITH CLUSTERING ORDER BY (activity_timestamp DESC);
+
+-- Index for filtering queries
+CREATE INDEX IF NOT EXISTS idx_order_tracking_tags ON order_tracking (o_tags);
+CREATE INDEX IF NOT EXISTS idx_product_tags ON product_catalog (product_tags);

@@ -299,3 +299,201 @@ class SelectQueries:
         query = "SELECT * FROM customer WHERE c_credit = ? LIMIT ?"
         result = self.session.execute(query, [credit_status, fetch_size])
         return [dict(row._asdict()) for row in result]
+    
+    # ========== ADDITIONAL SELECT QUERIES (S5-S13) ==========
+    
+    def select_orders_range(self, warehouse_id: int, district_id: int,
+                           start_order_id: int, end_order_id: int) -> List[Dict[str, Any]]:
+        """
+        S5: Get orders within a range of order IDs.
+        Complexity: Simple - Range query on clustering keys
+        Cassandra Concept: Clustering key range queries
+        
+        Args:
+            warehouse_id: Warehouse identifier
+            district_id: District identifier
+            start_order_id: Start order ID
+            end_order_id: End order ID
+            
+        Returns:
+            List of order records
+        """
+        query = """
+            SELECT * FROM orders 
+            WHERE o_w_id = ? AND o_d_id = ? AND o_id >= ? AND o_id <= ?
+        """
+        result = self.session.execute(query, [warehouse_id, district_id, start_order_id, end_order_id])
+        return [dict(row._asdict()) for row in result]
+    
+    def select_warehouses_in(self, warehouse_ids: List[int]) -> List[Dict[str, Any]]:
+        """
+        S6: Get multiple warehouses using IN clause.
+        Complexity: Simple - IN clause on partition key
+        Cassandra Concept: IN queries on partition keys
+        
+        Args:
+            warehouse_ids: List of warehouse identifiers
+            
+        Returns:
+            List of warehouse records
+        """
+        query = f"SELECT * FROM warehouse WHERE w_id IN ({','.join('?' * len(warehouse_ids))})"
+        result = self.session.execute(query, warehouse_ids)
+        return [dict(row._asdict()) for row in result]
+    
+    def select_customer_with_token(self, warehouse_id: int, district_id: int,
+                                   token_value: int = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        S7: Get customers using token-based pagination.
+        Complexity: Medium - Token function for pagination
+        Cassandra Concept: Token-based pagination for large partitions
+        
+        Args:
+            warehouse_id: Warehouse identifier
+            district_id: District identifier
+            token_value: Token value for pagination (None for first page)
+            limit: Number of records to fetch
+            
+        Returns:
+            List of customer records
+        """
+        if token_value is None:
+            query = "SELECT * FROM customer WHERE c_w_id = ? AND c_d_id = ? LIMIT ?"
+            result = self.session.execute(query, [warehouse_id, district_id, limit])
+        else:
+            query = """
+                SELECT * FROM customer 
+                WHERE token(c_w_id, c_d_id) > ? 
+                LIMIT ? ALLOW FILTERING
+            """
+            result = self.session.execute(query, [token_value, limit])
+        return [dict(row._asdict()) for row in result]
+    
+    def select_items_with_filter(self, min_price: float, max_price: float) -> List[Dict[str, Any]]:
+        """
+        S8: Get items within price range using ALLOW FILTERING.
+        Complexity: Complex - Full table scan with filtering
+        Cassandra Concept: ALLOW FILTERING (use with caution)
+        
+        Args:
+            min_price: Minimum price
+            max_price: Maximum price
+            
+        Returns:
+            List of item records
+        """
+        query = """
+            SELECT * FROM item 
+            WHERE i_price >= ? AND i_price <= ? 
+            ALLOW FILTERING
+            LIMIT 1000
+        """
+        result = self.session.execute(query, [min_price, max_price])
+        return [dict(row._asdict()) for row in result]
+    
+    def select_order_count(self, warehouse_id: int, district_id: int) -> int:
+        """
+        S9: Count orders for a warehouse and district.
+        Complexity: Simple - COUNT aggregation
+        Cassandra Concept: COUNT queries
+        
+        Args:
+            warehouse_id: Warehouse identifier
+            district_id: District identifier
+            
+        Returns:
+            Count of orders
+        """
+        query = "SELECT COUNT(*) FROM orders WHERE o_w_id = ? AND o_d_id = ?"
+        result = self.session.execute(query, [warehouse_id, district_id])
+        row = result.one()
+        return row[0] if row else 0
+    
+    def select_customer_projection(self, warehouse_id: int, district_id: int,
+                                   customer_id: int) -> Dict[str, Any]:
+        """
+        S10: Get specific customer fields (projection).
+        Complexity: Simple - Column projection
+        Cassandra Concept: Selecting specific columns
+        
+        Args:
+            warehouse_id: Warehouse identifier
+            district_id: District identifier
+            customer_id: Customer identifier
+            
+        Returns:
+            Customer record with selected fields only
+        """
+        query = """
+            SELECT c_id, c_first, c_last, c_balance, c_credit 
+            FROM customer 
+            WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?
+        """
+        result = self.session.execute(query, [warehouse_id, district_id, customer_id])
+        row = result.one()
+        return dict(row._asdict()) if row else {}
+    
+    def select_order_lines_range(self, warehouse_id: int, district_id: int,
+                                 order_id: int, start_line: int, end_line: int) -> List[Dict[str, Any]]:
+        """
+        S11: Get order lines within a range.
+        Complexity: Medium - Clustering key range query
+        Cassandra Concept: Range queries on clustering columns
+        
+        Args:
+            warehouse_id: Warehouse identifier
+            district_id: District identifier
+            order_id: Order identifier
+            start_line: Start line number
+            end_line: End line number
+            
+        Returns:
+            List of order line records
+        """
+        query = """
+            SELECT * FROM order_line 
+            WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ? 
+            AND ol_number >= ? AND ol_number <= ?
+        """
+        result = self.session.execute(query, [warehouse_id, district_id, order_id, start_line, end_line])
+        return [dict(row._asdict()) for row in result]
+    
+    def select_orders_by_carrier_index(self, carrier_id: int, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        S12: Get orders by carrier using secondary index.
+        Complexity: Complex - Secondary index with filtering
+        Cassandra Concept: Secondary index queries
+        
+        Args:
+            carrier_id: Carrier identifier
+            limit: Maximum number of records
+            
+        Returns:
+            List of order records
+        """
+        query = "SELECT * FROM orders WHERE o_carrier_id = ? LIMIT ?"
+        result = self.session.execute(query, [carrier_id, limit])
+        return [dict(row._asdict()) for row in result]
+    
+    def select_districts_multi_warehouse(self, warehouse_ids: List[int],
+                                        district_id: int) -> List[Dict[str, Any]]:
+        """
+        S13: Get districts across multiple warehouses using IN.
+        Complexity: Medium - Multi-partition query with IN clause
+        Cassandra Concept: IN clause on partition key component
+        
+        Args:
+            warehouse_ids: List of warehouse identifiers
+            district_id: District identifier
+            
+        Returns:
+            List of district records
+        """
+        query = f"""
+            SELECT * FROM district 
+            WHERE d_w_id IN ({','.join('?' * len(warehouse_ids))}) 
+            AND d_id = ?
+        """
+        params = warehouse_ids + [district_id]
+        result = self.session.execute(query, params)
+        return [dict(row._asdict()) for row in result]
