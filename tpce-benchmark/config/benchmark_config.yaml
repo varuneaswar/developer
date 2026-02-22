@@ -1,0 +1,30 @@
+benchmark:
+  duration_seconds: 3600  # 1 hour
+  concurrency: 50
+  warmup_duration: 60  # 60 seconds warmup
+  cooldown_duration: 30
+  
+  load_pattern: "constant"  # constant, ramp-up, spike, wave
+  
+  query_distribution:
+    select: 60  # 60% of operations
+    insert: 20
+    update: 15
+    delete: 5
+    
+  complexity_distribution:
+    simple: 50
+    medium: 30
+    complex: 20
+    
+data_generation:
+  num_customers: 1000
+  num_brokers: 100
+  num_securities: 5000
+  num_companies: 1000
+  num_trades: 10000
+  
+metrics:
+  collection_interval: 10  # seconds
+  export_format: ["json", "csv"]
+  output_dir: "./results"
