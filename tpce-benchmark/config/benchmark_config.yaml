@@ -5,6 +5,14 @@ benchmark:
   cooldown_duration: 30
   
   load_pattern: "constant"  # constant, ramp-up, spike, wave
+
+  # Snapshot isolation: copy base tables into a fresh keyspace before the
+  # benchmark run so that INSERT/UPDATE/DELETE operations do not modify the
+  # base data.  SELECT benchmarks therefore see a stable, consistent dataset
+  # and the base keyspace is fully preserved after every run.
+  snapshot_before_benchmark: true   # create isolated snapshot keyspace
+  cleanup_benchmark_keyspace: true  # drop snapshot keyspace after the run
+  schema_file: "schema/tpce_schema.cql"  # CQL file used to recreate schema in snapshot
   
   query_distribution:
     select: 60  # 60% of operations

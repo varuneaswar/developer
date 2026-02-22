@@ -3,6 +3,7 @@ Benchmark runner for TPC-E Cassandra benchmark.
 Orchestrates the entire benchmark execution.
 """
 
+import datetime
 import time
 import logging
 import random
@@ -42,6 +43,7 @@ class BenchmarkRunner:
         self.metrics_collector: Optional[MetricsCollector] = None
 
         self.is_connected = False
+        self._snapshot_keyspace_name: Optional[str] = None
 
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""
@@ -88,6 +90,49 @@ class BenchmarkRunner:
         self.metrics_collector = MetricsCollector(output_dir=output_dir)
 
         logger.info("All benchmark components initialized")
+
+    def _setup_benchmark_snapshot(self) -> str:
+        """
+        Create an isolated snapshot keyspace for this benchmark run.
+
+        The base keyspace is left untouched.  All INSERT/UPDATE/DELETE
+        operations during the benchmark will affect only the snapshot
+        keyspace, so SELECT benchmarks see a stable dataset and no base
+        data is lost.
+
+        Returns:
+            Name of the newly created snapshot keyspace
+        """
+        from schema.schema_setup import SchemaSetup
+
+        base_keyspace = self.cassandra_config['cassandra']['keyspace']
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        snapshot_keyspace = f"{base_keyspace}_run_{timestamp}"
+        schema_file = self.benchmark_config['benchmark'].get(
+            'schema_file', 'schema/tpce_schema.cql'
+        )
+
+        logger.info(f"Creating benchmark snapshot keyspace: '{snapshot_keyspace}'")
+        setup = SchemaSetup.from_session(self.session, self.cassandra_config)
+        setup.snapshot_keyspace(
+            source_keyspace=base_keyspace,
+            target_keyspace=snapshot_keyspace,
+            schema_file=schema_file,
+        )
+        return snapshot_keyspace
+
+    def _teardown_benchmark_snapshot(self, snapshot_keyspace: str) -> None:
+        """
+        Drop the snapshot keyspace created for this benchmark run.
+
+        Args:
+            snapshot_keyspace: Name of the snapshot keyspace to drop
+        """
+        from schema.schema_setup import SchemaSetup
+
+        logger.info(f"Cleaning up benchmark snapshot keyspace: '{snapshot_keyspace}'")
+        setup = SchemaSetup.from_session(self.session, self.cassandra_config)
+        setup.drop_snapshot_keyspace(snapshot_keyspace)
 
     def select_queries_by_distribution(self) -> List[Any]:
         """
@@ -156,6 +201,18 @@ class BenchmarkRunner:
         """
         Run the complete benchmark suite.
 
+        When ``snapshot_before_benchmark`` is enabled in the benchmark config,
+        the runner first copies the base keyspace into an isolated snapshot
+        keyspace and then directs all queries there.  This ensures:
+
+        * INSERT/UPDATE/DELETE operations during the run do not alter the base
+          tables, so SELECT results measure a stable, reproducible dataset.
+        * The base data is preserved after the benchmark completes, eliminating
+          the risk of accidental data loss from DELETE operations.
+
+        After the run the snapshot keyspace is dropped automatically when
+        ``cleanup_benchmark_keyspace`` is also enabled.
+
         Args:
             dry_run: If True, validate setup without executing benchmark
 
@@ -172,14 +229,31 @@ class BenchmarkRunner:
 
         logger.info("Starting benchmark execution...")
 
+        # Connect first so we can create the snapshot before initialising
+        # query handlers (prepared statements must target the right keyspace).
+        if not self.is_connected:
+            self.connect()
+
+        bench_cfg = self.benchmark_config['benchmark']
+        snapshot_keyspace = None
+        if bench_cfg.get('snapshot_before_benchmark', False):
+            snapshot_keyspace = self._setup_benchmark_snapshot()
+            self._snapshot_keyspace_name = snapshot_keyspace
+            # Point the session at the snapshot so all subsequent prepared
+            # statements and queries run against the isolated copy.
+            self.session.set_keyspace(snapshot_keyspace)
+            logger.info(f"Benchmark will run against snapshot keyspace: '{snapshot_keyspace}'")
+
+        # Initialize query handlers *after* the keyspace switch so that
+        # prepared statements are bound to the correct (snapshot) keyspace.
         self.initialize_components()
         self.run_warmup()
 
         selected_queries = self.select_queries_by_distribution()
 
-        duration = self.benchmark_config['benchmark']['duration_seconds']
+        duration = bench_cfg['duration_seconds']
         collection_interval = self.benchmark_config['metrics']['collection_interval']
-        load_pattern_str = self.benchmark_config['benchmark']['load_pattern']
+        load_pattern_str = bench_cfg['load_pattern']
         load_pattern = LoadPattern(load_pattern_str)
 
         logger.info(f"Running benchmark for {duration} seconds "
@@ -220,7 +294,7 @@ class BenchmarkRunner:
         except KeyboardInterrupt:
             logger.info("Benchmark interrupted by user")
 
-        cooldown_duration = self.benchmark_config['benchmark']['cooldown_duration']
+        cooldown_duration = bench_cfg['cooldown_duration']
         if cooldown_duration > 0:
             logger.info(f"Cooldown period: {cooldown_duration} seconds...")
             time.sleep(cooldown_duration)
@@ -235,6 +309,11 @@ class BenchmarkRunner:
 
         self.metrics_collector.print_summary()
         logger.info("Benchmark execution completed")
+
+        # Drop the snapshot keyspace to reclaim disk space
+        if snapshot_keyspace and bench_cfg.get('cleanup_benchmark_keyspace', True):
+            self._teardown_benchmark_snapshot(snapshot_keyspace)
+            self._snapshot_keyspace_name = None
 
         return self.metrics_collector.get_aggregate_statistics()
 
