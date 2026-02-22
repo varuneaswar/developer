@@ -230,6 +230,84 @@ class TestConfiguration(unittest.TestCase):
         self.assertTrue(schema_path.exists(), 
                        "Schema file not found")
 
+    def test_benchmark_config_snapshot_keys(self):
+        """Test that benchmark config includes snapshot isolation settings."""
+        import yaml
+        with open('config/benchmark_config.yaml') as f:
+            config = yaml.safe_load(f)
+        bench = config['benchmark']
+        self.assertIn('snapshot_before_benchmark', bench,
+                      "Missing 'snapshot_before_benchmark' key in benchmark config")
+        self.assertIn('cleanup_benchmark_keyspace', bench,
+                      "Missing 'cleanup_benchmark_keyspace' key in benchmark config")
+        self.assertIn('schema_file', bench,
+                      "Missing 'schema_file' key in benchmark config")
+        self.assertIsInstance(bench['snapshot_before_benchmark'], bool)
+        self.assertIsInstance(bench['cleanup_benchmark_keyspace'], bool)
+        self.assertTrue(bench['schema_file'],
+                        "'schema_file' must not be empty")
+
+    def test_snapshot_schema_file_exists(self):
+        """Test that the schema_file referenced in benchmark config exists."""
+        import yaml
+        with open('config/benchmark_config.yaml') as f:
+            config = yaml.safe_load(f)
+        schema_file = config['benchmark']['schema_file']
+        self.assertTrue(Path(schema_file).exists(),
+                        f"schema_file '{schema_file}' referenced in benchmark config not found")
+
+
+class TestSnapshotIsolation(unittest.TestCase):
+    """Test snapshot isolation logic without a live Cassandra instance."""
+
+    def _mock_cassandra_modules(self):
+        """Inject lightweight mock modules so Cassandra-dependent code can import."""
+        import sys
+        from unittest.mock import MagicMock
+
+        for mod in ['cassandra', 'cassandra.cluster', 'cassandra.auth',
+                    'cassandra.query', 'cassandra.concurrent', 'numpy']:
+            if mod not in sys.modules:
+                sys.modules[mod] = MagicMock()
+
+    def test_schema_setup_from_session_classmethod(self):
+        """SchemaSetup.from_session should create an instance with the given session/config."""
+        self._mock_cassandra_modules()
+        import sys
+        for key in list(sys.modules.keys()):
+            if key.startswith('schema'):
+                del sys.modules[key]
+
+        from unittest.mock import MagicMock
+        from schema.schema_setup import SchemaSetup
+
+        mock_session = MagicMock()
+        config = {'cassandra': {'keyspace': 'test_ks'}}
+        instance = SchemaSetup.from_session(mock_session, config)
+
+        self.assertIs(instance.session, mock_session)
+        self.assertEqual(instance.config, config)
+        self.assertIsNone(instance.cluster)
+
+    def test_benchmark_runner_snapshot_attributes(self):
+        """BenchmarkRunner.__init__ should set _snapshot_keyspace_name to None."""
+        self._mock_cassandra_modules()
+        import sys
+        import inspect
+        for key in list(sys.modules.keys()):
+            if key.startswith('test_harness') or key.startswith('benchmarks') \
+                    or key.startswith('queries'):
+                del sys.modules[key]
+
+        from test_harness.benchmark_runner import BenchmarkRunner
+
+        # Verify that __init__ actually sets the attribute (not just that None == None)
+        source = inspect.getsource(BenchmarkRunner.__init__)
+        self.assertIn('_snapshot_keyspace_name', source,
+                      "BenchmarkRunner.__init__ must initialise _snapshot_keyspace_name")
+        self.assertIn('None', source,
+                      "BenchmarkRunner.__init__ must set _snapshot_keyspace_name to None")
+
 
 class TestProjectStructure(unittest.TestCase):
     """Test project structure and files."""
@@ -295,6 +373,7 @@ def run_validation_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestTPCCDataGenerator))
     suite.addTests(loader.loadTestsFromTestCase(TestConfiguration))
     suite.addTests(loader.loadTestsFromTestCase(TestProjectStructure))
+    suite.addTests(loader.loadTestsFromTestCase(TestSnapshotIsolation))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
