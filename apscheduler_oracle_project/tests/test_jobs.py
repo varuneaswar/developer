@@ -1,16 +1,18 @@
 """
 Unit tests for job execution (Bash and Python scripts).
 """
-import pytest
-import sys
+
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.jobs import execute_bash_job, execute_python_job, execute_job  # noqa: E402
+from app.jobs import execute_bash_job, execute_job, execute_python_job  # noqa: E402
 
 
 class TestBashJobExecution:

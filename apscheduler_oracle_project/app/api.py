@@ -2,13 +2,14 @@
 REST API for job management using Flask-RESTX with Swagger UI.
 Provides endpoints for scheduling, removing, pausing, resuming, and listing jobs.
 """
+
 from datetime import datetime
-from flask import Flask, request, redirect
-from flask_restx import Api, Resource, fields
 
 from app.config import Config
-from app.scheduler import SchedulerManager
 from app.logger import get_logger
+from app.scheduler import SchedulerManager
+from flask import Flask, redirect
+from flask_restx import Api, Resource, fields
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -17,15 +18,16 @@ app.config["JSON_SORT_KEYS"] = False
 # Initialize Flask-RESTX with Swagger UI configuration
 api = Api(
     app,
-    version='1.0',
-    title='APScheduler Job Management API',
-    description='REST API for scheduling, managing and monitoring jobs using APScheduler with Oracle backend',
-    doc='/',  # Swagger UI available at root
-    prefix='/api'
+    version="1.0",
+    title="APScheduler Job Management API",
+    description="REST API for scheduling, managing and monitoring jobs "
+    "using APScheduler with Oracle backend",
+    doc="/",  # Swagger UI available at root
+    prefix="/api",
 )
 
 # Create namespaces
-ns = api.namespace('', description='Job management operations')
+ns = api.namespace("", description="Job management operations")
 
 # Initialize logger
 logger = get_logger("api")
@@ -34,53 +36,84 @@ logger = get_logger("api")
 scheduler_manager: SchedulerManager = None
 
 # Define API models for request/response documentation
-schedule_job_model = api.model('ScheduleJob', {
-    'job_id': fields.String(required=True, description='Unique identifier for the job', example='my_job_1'),
-    'job_type': fields.String(required=True, description='Type of job', enum=['bash', 'python'], example='bash'),
-    'script_path': fields.String(required=True, description='Full path to the script file', example='/path/to/script.sh'),
-    'run_date': fields.String(required=True, description='ISO 8601 datetime string (YYYY-MM-DDTHH:MM:SS)', example='2024-12-31T23:59:59'),
-    'args': fields.List(fields.String, description='List of arguments to pass to the script', example=['arg1', 'arg2']),
-    'replace_existing': fields.Boolean(description='Replace existing job with same ID', default=False, example=False)
-})
+schedule_job_model = api.model(
+    "ScheduleJob",
+    {
+        "job_id": fields.String(
+            required=True, description="Unique identifier for the job", example="my_job_1"
+        ),
+        "job_type": fields.String(
+            required=True, description="Type of job", enum=["bash", "python"], example="bash"
+        ),
+        "script_path": fields.String(
+            required=True, description="Full path to the script file", example="/path/to/script.sh"
+        ),
+        "run_date": fields.String(
+            required=True,
+            description="ISO 8601 datetime string (YYYY-MM-DDTHH:MM:SS)",
+            example="2024-12-31T23:59:59",
+        ),
+        "args": fields.List(
+            fields.String,
+            description="List of arguments to pass to the script",
+            example=["arg1", "arg2"],
+        ),
+        "replace_existing": fields.Boolean(
+            description="Replace existing job with same ID", default=False, example=False
+        ),
+    },
+)
 
-job_details_model = api.model('JobDetails', {
-    'job_id': fields.String(description='Job identifier'),
-    'name': fields.String(description='Job name'),
-    'next_run_time': fields.String(description='Next scheduled run time'),
-    'job_type': fields.String(description='Type of job'),
-    'script_path': fields.String(description='Path to the script'),
-    'args': fields.List(fields.String, description='Job arguments'),
-    'trigger': fields.String(description='Trigger information'),
-    'executor': fields.String(description='Executor name'),
-    'pending': fields.Boolean(description='Is job pending')
-})
+job_details_model = api.model(
+    "JobDetails",
+    {
+        "job_id": fields.String(description="Job identifier"),
+        "name": fields.String(description="Job name"),
+        "next_run_time": fields.String(description="Next scheduled run time"),
+        "job_type": fields.String(description="Type of job"),
+        "script_path": fields.String(description="Path to the script"),
+        "args": fields.List(fields.String, description="Job arguments"),
+        "trigger": fields.String(description="Trigger information"),
+        "executor": fields.String(description="Executor name"),
+        "pending": fields.Boolean(description="Is job pending"),
+    },
+)
 
-success_response_model = api.model('SuccessResponse', {
-    'message': fields.String(description='Success message'),
-    'job': fields.Nested(job_details_model, description='Job details')
-})
+success_response_model = api.model(
+    "SuccessResponse",
+    {
+        "message": fields.String(description="Success message"),
+        "job": fields.Nested(job_details_model, description="Job details"),
+    },
+)
 
-error_response_model = api.model('ErrorResponse', {
-    'error': fields.String(description='Error message')
-})
+error_response_model = api.model(
+    "ErrorResponse", {"error": fields.String(description="Error message")}
+)
 
-jobs_list_model = api.model('JobsList', {
-    'count': fields.Integer(description='Number of jobs'),
-    'jobs': fields.List(fields.Nested(job_details_model), description='List of jobs')
-})
+jobs_list_model = api.model(
+    "JobsList",
+    {
+        "count": fields.Integer(description="Number of jobs"),
+        "jobs": fields.List(fields.Nested(job_details_model), description="List of jobs"),
+    },
+)
 
-job_response_model = api.model('JobResponse', {
-    'job': fields.Nested(job_details_model, description='Job details')
-})
+job_response_model = api.model(
+    "JobResponse", {"job": fields.Nested(job_details_model, description="Job details")}
+)
 
-health_response_model = api.model('HealthResponse', {
-    'status': fields.String(description='Service status'),
-    'scheduler_running': fields.Boolean(description='Is scheduler running')
-})
+health_response_model = api.model(
+    "HealthResponse",
+    {
+        "status": fields.String(description="Service status"),
+        "scheduler_running": fields.Boolean(description="Is scheduler running"),
+    },
+)
 
-message_response_model = api.model('MessageResponse', {
-    'message': fields.String(description='Response message')
-})
+message_response_model = api.model(
+    "MessageResponse", {"message": fields.String(description="Response message")}
+)
 
 
 def init_app(scheduler: SchedulerManager = None):
@@ -134,32 +167,32 @@ def parse_datetime(date_str: str) -> datetime:
     )
 
 
-
-
 # Resource classes for endpoints
-@ns.route('/health')
+@ns.route("/health")
 class HealthCheck(Resource):
     """Health check endpoint"""
-    
-    @ns.doc('health_check', description='Check if the service is running')
-    @ns.response(200, 'Success', health_response_model)
+
+    @ns.doc("health_check", description="Check if the service is running")
+    @ns.response(200, "Success", health_response_model)
     def get(self):
         """Check if the service is running"""
         return {
             "status": "healthy",
-            "scheduler_running": scheduler_manager.scheduler.running if scheduler_manager else False,
+            "scheduler_running": (
+                scheduler_manager.scheduler.running if scheduler_manager else False
+            ),
         }, 200
 
 
-@ns.route('/schedule-job')
+@ns.route("/schedule-job")
 class ScheduleJob(Resource):
     """Schedule a new job"""
-    
-    @ns.doc('schedule_job', description='Schedule a new Bash or Python script execution')
+
+    @ns.doc("schedule_job", description="Schedule a new Bash or Python script execution")
     @ns.expect(schedule_job_model)
-    @ns.response(200, 'Job scheduled successfully', success_response_model)
-    @ns.response(400, 'Validation error', error_response_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+    @ns.response(200, "Job scheduled successfully", success_response_model)
+    @ns.response(400, "Validation error", error_response_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def post(self):
         """Schedule a new job"""
         data = api.payload or {}
@@ -212,16 +245,16 @@ class ScheduleJob(Resource):
             return {"error": f"Internal server error: {str(e)}"}, 500
 
 
-@ns.route('/remove-job/<string:job_id>')
-@ns.param('job_id', 'The job identifier')
+@ns.route("/remove-job/<string:job_id>")
+@ns.param("job_id", "The job identifier")
 class RemoveJob(Resource):
     """Remove a scheduled job"""
-    
-    @ns.doc('remove_job', description='Remove a scheduled job by ID')
-    @ns.response(200, 'Job removed successfully', message_response_model)
-    @ns.response(400, 'Validation error', error_response_model)
-    @ns.response(404, 'Job not found', error_response_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+
+    @ns.doc("remove_job", description="Remove a scheduled job by ID")
+    @ns.response(200, "Job removed successfully", message_response_model)
+    @ns.response(400, "Validation error", error_response_model)
+    @ns.response(404, "Job not found", error_response_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def delete(self, job_id):
         """Remove a scheduled job"""
         # Check if job exists
@@ -239,13 +272,13 @@ class RemoveJob(Resource):
             return {"error": f"Failed to remove job: {job_id}"}, 500
 
 
-@ns.route('/jobs')
+@ns.route("/jobs")
 class ListJobs(Resource):
     """List all scheduled jobs"""
-    
-    @ns.doc('list_jobs', description='Get a list of all scheduled jobs')
-    @ns.response(200, 'List of jobs', jobs_list_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+
+    @ns.doc("list_jobs", description="Get a list of all scheduled jobs")
+    @ns.response(200, "List of jobs", jobs_list_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def get(self):
         """List all scheduled jobs"""
         try:
@@ -256,16 +289,16 @@ class ListJobs(Resource):
             return {"error": f"Internal server error: {str(e)}"}, 500
 
 
-@ns.route('/pause-job/<string:job_id>')
-@ns.param('job_id', 'The job identifier')
+@ns.route("/pause-job/<string:job_id>")
+@ns.param("job_id", "The job identifier")
 class PauseJob(Resource):
     """Pause a scheduled job"""
-    
-    @ns.doc('pause_job', description='Pause a scheduled job by ID')
-    @ns.response(200, 'Job paused successfully', message_response_model)
-    @ns.response(400, 'Validation error', error_response_model)
-    @ns.response(404, 'Job not found', error_response_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+
+    @ns.doc("pause_job", description="Pause a scheduled job by ID")
+    @ns.response(200, "Job paused successfully", message_response_model)
+    @ns.response(400, "Validation error", error_response_model)
+    @ns.response(404, "Job not found", error_response_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def put(self, job_id):
         """Pause a scheduled job"""
         # Check if job exists
@@ -283,16 +316,16 @@ class PauseJob(Resource):
             return {"error": f"Failed to pause job: {job_id}"}, 500
 
 
-@ns.route('/resume-job/<string:job_id>')
-@ns.param('job_id', 'The job identifier')
+@ns.route("/resume-job/<string:job_id>")
+@ns.param("job_id", "The job identifier")
 class ResumeJob(Resource):
     """Resume a paused job"""
-    
-    @ns.doc('resume_job', description='Resume a paused job by ID')
-    @ns.response(200, 'Job resumed successfully', message_response_model)
-    @ns.response(400, 'Validation error', error_response_model)
-    @ns.response(404, 'Job not found', error_response_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+
+    @ns.doc("resume_job", description="Resume a paused job by ID")
+    @ns.response(200, "Job resumed successfully", message_response_model)
+    @ns.response(400, "Validation error", error_response_model)
+    @ns.response(404, "Job not found", error_response_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def put(self, job_id):
         """Resume a paused job"""
         # Check if job exists
@@ -310,16 +343,16 @@ class ResumeJob(Resource):
             return {"error": f"Failed to resume job: {job_id}"}, 500
 
 
-@ns.route('/job/<string:job_id>')
-@ns.param('job_id', 'The job identifier')
+@ns.route("/job/<string:job_id>")
+@ns.param("job_id", "The job identifier")
 class GetJob(Resource):
     """Get details of a specific job"""
-    
-    @ns.doc('get_job', description='Get details of a specific job by ID')
-    @ns.response(200, 'Job details', job_response_model)
-    @ns.response(400, 'Validation error', error_response_model)
-    @ns.response(404, 'Job not found', error_response_model)
-    @ns.response(500, 'Internal server error', error_response_model)
+
+    @ns.doc("get_job", description="Get details of a specific job by ID")
+    @ns.response(200, "Job details", job_response_model)
+    @ns.response(400, "Validation error", error_response_model)
+    @ns.response(404, "Job not found", error_response_model)
+    @ns.response(500, "Internal server error", error_response_model)
     def get(self, job_id):
         """Get details of a specific job"""
         job = scheduler_manager.get_job(job_id)
@@ -331,10 +364,10 @@ class GetJob(Resource):
 
 
 # Add a route for /docs to redirect to Swagger UI at /
-@app.route('/docs')
+@app.route("/docs")
 def docs_redirect():
     """Redirect /docs to Swagger UI at root"""
-    return redirect('/', code=302)
+    return redirect("/", code=302)
 
 
 def run_app(host: str = None, port: int = None, debug: bool = None):

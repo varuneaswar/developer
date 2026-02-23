@@ -1,0 +1,92 @@
+name: Python Code Quality
+
+# Triggers: every push and pull-request that touches Python source or configs.
+on:
+  push:
+    paths:
+      - "**.py"
+      - "code_quality/python/**"
+      - ".pre-commit-config.yaml"
+      - "requirements.txt"
+      - ".github/workflows/code_quality_python.yml"
+  pull_request:
+    paths:
+      - "**.py"
+      - "code_quality/python/**"
+      - ".pre-commit-config.yaml"
+      - "requirements.txt"
+      - ".github/workflows/code_quality_python.yml"
+
+# ---------------------------------------------------------------------------
+# Change this single variable to switch the Python version used across all
+# steps in this workflow.
+# ---------------------------------------------------------------------------
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # -----------------------------------------------------------------------
+      - name: Install dev dependencies
+        run: pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      # BLOCKING checks — these will fail the workflow if errors are found.
+      # -----------------------------------------------------------------------
+
+      - name: Run black (check-only)
+        run: |
+          black --check --diff \
+            --config code_quality/python/pyproject.toml \
+            --exclude '\.venv|venv|build|dist' \
+            .
+
+      - name: Run isort (check-only)
+        run: |
+          isort --check-only --diff \
+            --settings-path code_quality/python/pyproject.toml \
+            --skip .venv --skip venv --skip build --skip dist \
+            .
+
+      - name: Run flake8
+        run: |
+          flake8 --config code_quality/python/setup.cfg .
+
+      - name: Run bandit
+        run: |
+          bandit -r . \
+            -c code_quality/python/bandit.yaml \
+            --exclude ./.venv,./venv,./build,./dist
+
+      # -----------------------------------------------------------------------
+      # NON-BLOCKING checks — informational only.
+      # To make blocking: remove the `|| true` from each `run:` command.
+      # -----------------------------------------------------------------------
+
+      - name: Run pylint (non-blocking)
+        run: |
+          python -m pylint \
+            --rcfile code_quality/python/pyproject.toml \
+            $(git ls-files '*.py') || true
+
+      - name: Run mypy (non-blocking)
+        run: |
+          python -m mypy \
+            --config-file code_quality/python/pyproject.toml \
+            $(git ls-files '*.py') || true

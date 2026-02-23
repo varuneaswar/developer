@@ -8,15 +8,15 @@ This example shows how to:
 3. List and manage jobs
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.scheduler import get_scheduler_manager
-from app.logger import setup_logger
+from app.logger import setup_logger  # noqa: E402
+from app.scheduler import get_scheduler_manager  # noqa: E402
 
 # Set up logger
 logger = setup_logger("example")
@@ -74,8 +74,7 @@ def main():
         logger.info(f"Total jobs scheduled: {len(jobs)}")
         for job in jobs:
             logger.info(
-                f"  Job: {job['id']} - {job['name']} - "
-                f"Next run: {job['next_run_time']}"
+                f"  Job: {job['id']} - {job['name']} - " f"Next run: {job['next_run_time']}"
             )
 
         # Get specific job details

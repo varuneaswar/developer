@@ -6,17 +6,17 @@ and provides functions for job management.
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
-from apscheduler.schedulers.background import BackgroundScheduler
+from typing import Any, Dict, Optional
+
+from apscheduler.executors.pool import ProcessPoolExecutor, ThreadPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from pytz import timezone as pytz_timezone
 
 from .config import Config
-from .logger import setup_logger
 from .jobs import job_wrapper
-
+from .logger import setup_logger
 
 logger = setup_logger("scheduler")
 

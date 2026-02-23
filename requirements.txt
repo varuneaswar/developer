@@ -1,0 +1,24 @@
+# Dev tooling dependencies for code quality checks.
+# Install with: pip install -r requirements.txt
+# These are the same versions pinned in .pre-commit-config.yaml.
+
+# Formatter
+black==24.4.2
+
+# Import sorter
+isort==5.13.2
+
+# Style / PEP 8 linter
+flake8==7.0.0
+
+# Security scanner
+bandit==1.7.8
+
+# Deep linter (non-blocking in CI by default)
+pylint==3.2.3
+
+# Type checker (non-blocking in CI by default)
+mypy==1.10.0
+
+# Pre-commit framework (to run hooks locally)
+pre-commit==3.7.1

@@ -1,0 +1,22 @@
+# bandit security scanner configuration
+# Reference: https://bandit.readthedocs.io/en/latest/config.html
+
+# Paths to exclude from scanning
+exclude_dirs:
+  - .venv
+  - venv
+  - build
+  - dist
+  - tests
+
+# Tests to skip globally — these are intentional patterns in this codebase.
+# Remove any entry here if you want bandit to enforce it in your repo.
+skips:
+  # B311 — random module used intentionally for benchmark/test-data generation
+  - B311
+  # B404 / B603 — subprocess is the intended mechanism for executing scheduled jobs
+  - B404
+  - B603
+  # B608 — CQL prepared-statement strings mis-classified as SQL injection;
+  #         all dynamic values come from config, not user input
+  - B608

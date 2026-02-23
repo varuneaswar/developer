@@ -4,12 +4,10 @@ Handles bulk loading of generated data into Cassandra.
 """
 
 import logging
-from typing import Optional
-from cassandra.cluster import Session
-from cassandra.concurrent import execute_concurrent_with_args
-from datetime import datetime, timedelta
 import random
 
+from cassandra.cluster import Session
+from cassandra.concurrent import execute_concurrent_with_args
 from data_generator.tpce_data_generator import TPCEDataGenerator
 
 logger = logging.getLogger(__name__)
@@ -112,24 +110,46 @@ class DataLoader:
         params_list = []
         for c_id in range(1, total + 1):
             c = self.generator.generate_customer(c_id)
-            params_list.append([
-                c['c_id'], c['c_tax_id'], c['c_st_id'], c['c_l_name'], c['c_f_name'],
-                c['c_m_name'], c['c_gndr'], c['c_tier'], c['c_dob'], c['c_ad_id'],
-                c['c_ctry_1'], c['c_area_1'], c['c_local_1'], c['c_ext_1'],
-                c['c_ctry_2'], c['c_area_2'], c['c_local_2'], c['c_ext_2'],
-                c['c_ctry_3'], c['c_area_3'], c['c_local_3'], c['c_ext_3'],
-                c['c_email_1'], c['c_email_2'],
-            ])
+            params_list.append(
+                [
+                    c["c_id"],
+                    c["c_tax_id"],
+                    c["c_st_id"],
+                    c["c_l_name"],
+                    c["c_f_name"],
+                    c["c_m_name"],
+                    c["c_gndr"],
+                    c["c_tier"],
+                    c["c_dob"],
+                    c["c_ad_id"],
+                    c["c_ctry_1"],
+                    c["c_area_1"],
+                    c["c_local_1"],
+                    c["c_ext_1"],
+                    c["c_ctry_2"],
+                    c["c_area_2"],
+                    c["c_local_2"],
+                    c["c_ext_2"],
+                    c["c_ctry_3"],
+                    c["c_area_3"],
+                    c["c_local_3"],
+                    c["c_ext_3"],
+                    c["c_email_1"],
+                    c["c_email_2"],
+                ]
+            )
 
             if len(params_list) >= batch_size:
-                execute_concurrent_with_args(self.session, self.insert_customer,
-                                             params_list, concurrency=batch_size)
+                execute_concurrent_with_args(
+                    self.session, self.insert_customer, params_list, concurrency=batch_size
+                )
                 logger.info(f"Loaded {c_id}/{total} customers")
                 params_list = []
 
         if params_list:
-            execute_concurrent_with_args(self.session, self.insert_customer,
-                                         params_list, concurrency=len(params_list))
+            execute_concurrent_with_args(
+                self.session, self.insert_customer, params_list, concurrency=len(params_list)
+            )
 
         logger.info(f"Loaded {total} customers successfully")
         return total
@@ -142,11 +162,13 @@ class DataLoader:
         params_list = []
         for b_id in range(1, total + 1):
             b = self.generator.generate_broker(b_id)
-            params_list.append([b['b_id'], b['b_st_id'], b['b_name'],
-                                 b['b_num_trades'], b['b_comm_total']])
+            params_list.append(
+                [b["b_id"], b["b_st_id"], b["b_name"], b["b_num_trades"], b["b_comm_total"]]
+            )
 
-        execute_concurrent_with_args(self.session, self.insert_broker,
-                                     params_list, concurrency=batch_size)
+        execute_concurrent_with_args(
+            self.session, self.insert_broker, params_list, concurrency=batch_size
+        )
         logger.info(f"Loaded {total} brokers successfully")
         return total
 
@@ -161,22 +183,38 @@ class DataLoader:
             co_id = (i % self.generator.num_companies) + 1
             ex_id = self.generator.EXCHANGE_IDS[i % len(self.generator.EXCHANGE_IDS)]
             s = self.generator.generate_security(symb, co_id, ex_id)
-            params_list.append([
-                s['s_symb'], s['s_issue'], s['s_st_id'], s['s_name'], s['s_ex_id'],
-                s['s_co_id'], s['s_num_out'], s['s_start_date'], s['s_exch_date'],
-                s['s_pe'], s['s_52wk_high'], s['s_52wk_high_date'],
-                s['s_52wk_low'], s['s_52wk_low_date'], s['s_dividend'], s['s_yield'],
-            ])
+            params_list.append(
+                [
+                    s["s_symb"],
+                    s["s_issue"],
+                    s["s_st_id"],
+                    s["s_name"],
+                    s["s_ex_id"],
+                    s["s_co_id"],
+                    s["s_num_out"],
+                    s["s_start_date"],
+                    s["s_exch_date"],
+                    s["s_pe"],
+                    s["s_52wk_high"],
+                    s["s_52wk_high_date"],
+                    s["s_52wk_low"],
+                    s["s_52wk_low_date"],
+                    s["s_dividend"],
+                    s["s_yield"],
+                ]
+            )
 
             if len(params_list) >= batch_size:
-                execute_concurrent_with_args(self.session, self.insert_security,
-                                             params_list, concurrency=batch_size)
+                execute_concurrent_with_args(
+                    self.session, self.insert_security, params_list, concurrency=batch_size
+                )
                 logger.info(f"Loaded {i + 1}/{total} securities")
                 params_list = []
 
         if params_list:
-            execute_concurrent_with_args(self.session, self.insert_security,
-                                         params_list, concurrency=len(params_list))
+            execute_concurrent_with_args(
+                self.session, self.insert_security, params_list, concurrency=len(params_list)
+            )
 
         logger.info(f"Loaded {total} securities successfully")
         return total
@@ -190,14 +228,24 @@ class DataLoader:
         for co_id in range(1, total + 1):
             in_id = self.generator.INDUSTRY_IDS[co_id % len(self.generator.INDUSTRY_IDS)]
             c = self.generator.generate_company(co_id, in_id)
-            params_list.append([
-                c['co_id'], c['co_st_id'], c['co_ad_id'], c['co_name'],
-                c['co_in_id'], c['co_sp_rate'], c['co_ceo'], c['co_desc'],
-                c['co_open_date'], c['co_co_id'],
-            ])
+            params_list.append(
+                [
+                    c["co_id"],
+                    c["co_st_id"],
+                    c["co_ad_id"],
+                    c["co_name"],
+                    c["co_in_id"],
+                    c["co_sp_rate"],
+                    c["co_ceo"],
+                    c["co_desc"],
+                    c["co_open_date"],
+                    c["co_co_id"],
+                ]
+            )
 
-        execute_concurrent_with_args(self.session, self.insert_company,
-                                     params_list, concurrency=batch_size)
+        execute_concurrent_with_args(
+            self.session, self.insert_company, params_list, concurrency=batch_size
+        )
         logger.info(f"Loaded {total} companies successfully")
         return total
 
@@ -218,42 +266,69 @@ class DataLoader:
             ca_id = random.randint(1, num_accounts)
             s_symb = symbols[random.randint(0, num_securities - 1)]
             t = self.generator.generate_trade(t_id, ca_id, s_symb)
-            trade_params.append([
-                t['t_id'], t['t_dts'], t['t_st_id'], t['t_tt_id'], t['t_is_cash'],
-                t['t_s_symb'], t['t_qty'], t['t_bid_price'], t['t_ca_id'],
-                t['t_exec_name'], t['t_trade_price'], t['t_chrg'], t['t_comm'],
-                t['t_tax'], t['t_lifo'],
-            ])
+            trade_params.append(
+                [
+                    t["t_id"],
+                    t["t_dts"],
+                    t["t_st_id"],
+                    t["t_tt_id"],
+                    t["t_is_cash"],
+                    t["t_s_symb"],
+                    t["t_qty"],
+                    t["t_bid_price"],
+                    t["t_ca_id"],
+                    t["t_exec_name"],
+                    t["t_trade_price"],
+                    t["t_chrg"],
+                    t["t_comm"],
+                    t["t_tax"],
+                    t["t_lifo"],
+                ]
+            )
 
             h = self.generator.generate_holding(t_id, ca_id, s_symb)
-            holding_params.append([
-                h['h_ca_id'], h['h_s_symb'], h['h_dts'], h['h_t_id'],
-                h['h_price'], h['h_qty'],
-            ])
+            holding_params.append(
+                [
+                    h["h_ca_id"],
+                    h["h_s_symb"],
+                    h["h_dts"],
+                    h["h_t_id"],
+                    h["h_price"],
+                    h["h_qty"],
+                ]
+            )
 
             key = (ca_id, s_symb)
-            hs_agg[key] = hs_agg.get(key, 0) + h['h_qty']
+            hs_agg[key] = hs_agg.get(key, 0) + h["h_qty"]
 
             if len(trade_params) >= batch_size:
-                execute_concurrent_with_args(self.session, self.insert_trade,
-                                             trade_params, concurrency=batch_size)
-                execute_concurrent_with_args(self.session, self.insert_holding,
-                                             holding_params, concurrency=batch_size)
+                execute_concurrent_with_args(
+                    self.session, self.insert_trade, trade_params, concurrency=batch_size
+                )
+                execute_concurrent_with_args(
+                    self.session, self.insert_holding, holding_params, concurrency=batch_size
+                )
                 logger.info(f"Loaded {t_id}/{total} trades")
                 trade_params = []
                 holding_params = []
 
         if trade_params:
-            execute_concurrent_with_args(self.session, self.insert_trade,
-                                         trade_params, concurrency=len(trade_params))
-            execute_concurrent_with_args(self.session, self.insert_holding,
-                                         holding_params, concurrency=len(holding_params))
+            execute_concurrent_with_args(
+                self.session, self.insert_trade, trade_params, concurrency=len(trade_params)
+            )
+            execute_concurrent_with_args(
+                self.session, self.insert_holding, holding_params, concurrency=len(holding_params)
+            )
 
         # Load holding summaries
         hs_params = [[ca_id, s_symb, qty] for (ca_id, s_symb), qty in hs_agg.items()]
         if hs_params:
-            execute_concurrent_with_args(self.session, self.insert_holding_summary,
-                                         hs_params, concurrency=min(batch_size, len(hs_params)))
+            execute_concurrent_with_args(
+                self.session,
+                self.insert_holding_summary,
+                hs_params,
+                concurrency=min(batch_size, len(hs_params)),
+            )
 
         logger.info(f"Loaded {total} trades successfully")
         return total
@@ -273,11 +348,11 @@ class DataLoader:
         logger.info("Starting full TPC-E data load...")
 
         result = {
-            'customers': self.load_customers(),
-            'brokers': self.load_brokers(),
-            'companies': self.load_companies(),
-            'securities': self.load_securities(),
-            'trades': self.load_trades(),
+            "customers": self.load_customers(),
+            "brokers": self.load_brokers(),
+            "companies": self.load_companies(),
+            "securities": self.load_securities(),
+            "trades": self.load_trades(),
         }
 
         logger.info(f"Data load complete: {result}")

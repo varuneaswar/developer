@@ -4,16 +4,16 @@ Orchestrates the entire benchmark execution.
 """
 
 import datetime
-import time
 import logging
 import random
-import yaml
-from typing import Dict, Any, List, Optional
-from cassandra.cluster import Cluster, Session
-from cassandra.auth import PlainTextAuthProvider
+import time
+from typing import Any, Dict, List, Optional
 
-from benchmarks.query_definitions import QueryDefinitions, QueryType, ComplexityLevel
+import yaml
+from benchmarks.query_definitions import ComplexityLevel, QueryDefinitions, QueryType
 from benchmarks.query_executor import QueryExecutor
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster, Session
 from test_harness.concurrency_manager import ConcurrencyManager, LoadPattern
 from test_harness.metrics_collector import MetricsCollector
 
@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 class BenchmarkRunner:
     """Main benchmark runner orchestrating all components."""
 
-    def __init__(self, cassandra_config_path: str = "config/cassandra_config.yaml",
-                 benchmark_config_path: str = "config/benchmark_config.yaml"):
+    def __init__(
+        self,
+        cassandra_config_path: str = "config/cassandra_config.yaml",
+        benchmark_config_path: str = "config/benchmark_config.yaml",
+    ):
         """
         Initialize benchmark runner.
 
@@ -47,29 +50,28 @@ class BenchmarkRunner:
 
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             return yaml.safe_load(f)
 
     def connect(self) -> None:
         """Establish connection to Cassandra cluster."""
-        cassandra_config = self.cassandra_config['cassandra']
+        cassandra_config = self.cassandra_config["cassandra"]
 
         auth_provider = None
-        if cassandra_config.get('username'):
+        if cassandra_config.get("username"):
             auth_provider = PlainTextAuthProvider(
-                username=cassandra_config['username'],
-                password=cassandra_config.get('password', '')
+                username=cassandra_config["username"], password=cassandra_config.get("password", "")
             )
 
         self.cluster = Cluster(
-            contact_points=cassandra_config['contact_points'],
-            port=cassandra_config['port'],
+            contact_points=cassandra_config["contact_points"],
+            port=cassandra_config["port"],
             auth_provider=auth_provider,
-            protocol_version=cassandra_config.get('protocol_version', 4)
+            protocol_version=cassandra_config.get("protocol_version", 4),
         )
 
         self.session = self.cluster.connect()
-        self.session.set_keyspace(cassandra_config['keyspace'])
+        self.session.set_keyspace(cassandra_config["keyspace"])
 
         logger.info(f"Connected to Cassandra at {cassandra_config['contact_points']}")
         logger.info(f"Using keyspace: {cassandra_config['keyspace']}")
@@ -83,10 +85,10 @@ class BenchmarkRunner:
 
         self.query_executor = QueryExecutor(self.session)
 
-        concurrency = self.benchmark_config['benchmark']['concurrency']
+        concurrency = self.benchmark_config["benchmark"]["concurrency"]
         self.concurrency_manager = ConcurrencyManager(concurrency=concurrency)
 
-        output_dir = self.benchmark_config['metrics']['output_dir']
+        output_dir = self.benchmark_config["metrics"]["output_dir"]
         self.metrics_collector = MetricsCollector(output_dir=output_dir)
 
         logger.info("All benchmark components initialized")
@@ -105,11 +107,11 @@ class BenchmarkRunner:
         """
         from schema.schema_setup import SchemaSetup
 
-        base_keyspace = self.cassandra_config['cassandra']['keyspace']
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_keyspace = self.cassandra_config["cassandra"]["keyspace"]
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         snapshot_keyspace = f"{base_keyspace}_run_{timestamp}"
-        schema_file = self.benchmark_config['benchmark'].get(
-            'schema_file', 'schema/tpce_schema.cql'
+        schema_file = self.benchmark_config["benchmark"].get(
+            "schema_file", "schema/tpce_schema.cql"
         )
 
         logger.info(f"Creating benchmark snapshot keyspace: '{snapshot_keyspace}'")
@@ -141,8 +143,8 @@ class BenchmarkRunner:
         Returns:
             List of query definitions
         """
-        query_dist = self.benchmark_config['benchmark']['query_distribution']
-        complexity_dist = self.benchmark_config['benchmark']['complexity_distribution']
+        query_dist = self.benchmark_config["benchmark"]["query_distribution"]
+        complexity_dist = self.benchmark_config["benchmark"]["complexity_distribution"]
 
         total_query_pct = sum(query_dist.values())
         total_complexity_pct = sum(complexity_dist.values())
@@ -155,9 +157,7 @@ class BenchmarkRunner:
 
             for complexity_str, complexity_pct in complexity_dist.items():
                 complexity = ComplexityLevel(complexity_str)
-                matching_queries = [
-                    q for q in type_queries if q.complexity == complexity
-                ]
+                matching_queries = [q for q in type_queries if q.complexity == complexity]
 
                 if matching_queries:
                     weight = (type_pct / total_query_pct) * (complexity_pct / total_complexity_pct)
@@ -171,7 +171,7 @@ class BenchmarkRunner:
 
     def run_warmup(self) -> None:
         """Run warmup phase."""
-        warmup_duration = self.benchmark_config['benchmark']['warmup_duration']
+        warmup_duration = self.benchmark_config["benchmark"]["warmup_duration"]
 
         if warmup_duration <= 0:
             logger.info("Skipping warmup phase")
@@ -192,7 +192,7 @@ class BenchmarkRunner:
 
         self.query_executor.reset_metrics()
         self.metrics_collector = MetricsCollector(
-            output_dir=self.benchmark_config['metrics']['output_dir']
+            output_dir=self.benchmark_config["metrics"]["output_dir"]
         )
 
         logger.info("Warmup phase completed")
@@ -225,7 +225,7 @@ class BenchmarkRunner:
             logger.info("✓ Connection successful")
             logger.info(f"✓ Available queries: {len(self.query_definitions.get_all_queries())}")
             logger.info("Dry run completed successfully")
-            return {'status': 'dry_run_success'}
+            return {"status": "dry_run_success"}
 
         logger.info("Starting benchmark execution...")
 
@@ -234,9 +234,9 @@ class BenchmarkRunner:
         if not self.is_connected:
             self.connect()
 
-        bench_cfg = self.benchmark_config['benchmark']
+        bench_cfg = self.benchmark_config["benchmark"]
         snapshot_keyspace = None
-        if bench_cfg.get('snapshot_before_benchmark', False):
+        if bench_cfg.get("snapshot_before_benchmark", False):
             snapshot_keyspace = self._setup_benchmark_snapshot()
             self._snapshot_keyspace_name = snapshot_keyspace
             # Point the session at the snapshot so all subsequent prepared
@@ -251,13 +251,14 @@ class BenchmarkRunner:
 
         selected_queries = self.select_queries_by_distribution()
 
-        duration = bench_cfg['duration_seconds']
-        collection_interval = self.benchmark_config['metrics']['collection_interval']
-        load_pattern_str = bench_cfg['load_pattern']
+        duration = bench_cfg["duration_seconds"]
+        collection_interval = self.benchmark_config["metrics"]["collection_interval"]
+        load_pattern_str = bench_cfg["load_pattern"]
         load_pattern = LoadPattern(load_pattern_str)
 
-        logger.info(f"Running benchmark for {duration} seconds "
-                    f"with {load_pattern.value} load pattern")
+        logger.info(
+            f"Running benchmark for {duration} seconds " f"with {load_pattern.value} load pattern"
+        )
 
         def execute_query_task(query_def):
             result = self.query_executor.execute_query(query_def)
@@ -270,15 +271,14 @@ class BenchmarkRunner:
 
         try:
             while (time.time() - start_time) < duration:
-                batch_duration = min(collection_interval,
-                                     duration - (time.time() - start_time))
+                batch_duration = min(collection_interval, duration - (time.time() - start_time))
 
                 if batch_duration > 0:
                     batch_results = self.concurrency_manager.execute_concurrent(
                         task=execute_query_task,
                         task_args=selected_queries,
                         duration_seconds=int(batch_duration),
-                        load_pattern=load_pattern
+                        load_pattern=load_pattern,
                     )
                     results.extend(batch_results)
 
@@ -294,24 +294,24 @@ class BenchmarkRunner:
         except KeyboardInterrupt:
             logger.info("Benchmark interrupted by user")
 
-        cooldown_duration = bench_cfg['cooldown_duration']
+        cooldown_duration = bench_cfg["cooldown_duration"]
         if cooldown_duration > 0:
             logger.info(f"Cooldown period: {cooldown_duration} seconds...")
             time.sleep(cooldown_duration)
 
         logger.info("Exporting metrics...")
-        export_formats = self.benchmark_config['metrics']['export_format']
+        export_formats = self.benchmark_config["metrics"]["export_format"]
 
-        if 'json' in export_formats:
+        if "json" in export_formats:
             self.metrics_collector.export_to_json()
-        if 'csv' in export_formats:
+        if "csv" in export_formats:
             self.metrics_collector.export_to_csv()
 
         self.metrics_collector.print_summary()
         logger.info("Benchmark execution completed")
 
         # Drop the snapshot keyspace to reclaim disk space
-        if snapshot_keyspace and bench_cfg.get('cleanup_benchmark_keyspace', True):
+        if snapshot_keyspace and bench_cfg.get("cleanup_benchmark_keyspace", True):
             self._teardown_benchmark_snapshot(snapshot_keyspace)
             self._snapshot_keyspace_name = None
 

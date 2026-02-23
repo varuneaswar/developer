@@ -3,17 +3,17 @@ Query executor for TPC-E benchmark.
 Handles query execution with metrics collection.
 """
 
-import time
 import logging
-from typing import Dict, Any, Optional, List
-from cassandra.cluster import Session
+import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from queries.select_queries import SelectQueries
-from queries.insert_queries import InsertQueries
-from queries.update_queries import UpdateQueries
-from queries.delete_queries import DeleteQueries
 from benchmarks.query_definitions import QueryDefinition, QueryType
+from cassandra.cluster import Session
+from queries.delete_queries import DeleteQueries
+from queries.insert_queries import InsertQueries
+from queries.select_queries import SelectQueries
+from queries.update_queries import UpdateQueries
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,9 @@ class QueryExecutor:
         self.error_count = 0
         self.total_latency = 0.0
 
-    def execute_query(self, query_def: QueryDefinition,
-                      params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute_query(
+        self, query_def: QueryDefinition, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute a single query and collect metrics.
 
@@ -82,15 +83,15 @@ class QueryExecutor:
         self.total_latency += latency
 
         return {
-            'query_id': query_def.query_id,
-            'query_name': query_def.name,
-            'query_type': query_def.query_type.value,
-            'complexity': query_def.complexity.value,
-            'success': success,
-            'latency_ms': latency,
-            'timestamp': datetime.now().isoformat(),
-            'error': error_message,
-            'result': result
+            "query_id": query_def.query_id,
+            "query_name": query_def.name,
+            "query_type": query_def.query_type.value,
+            "complexity": query_def.complexity.value,
+            "success": success,
+            "latency_ms": latency,
+            "timestamp": datetime.now().isoformat(),
+            "error": error_message,
+            "result": result,
         }
 
     def _get_query_handler(self, query_type: QueryType):
@@ -99,12 +100,13 @@ class QueryExecutor:
             QueryType.SELECT: self.select_queries,
             QueryType.INSERT: self.insert_queries,
             QueryType.UPDATE: self.update_queries,
-            QueryType.DELETE: self.delete_queries
+            QueryType.DELETE: self.delete_queries,
         }
         return handlers[query_type]
 
-    def execute_queries_batch(self, query_defs: List[QueryDefinition],
-                              iterations: int = 1) -> List[Dict[str, Any]]:
+    def execute_queries_batch(
+        self, query_defs: List[QueryDefinition], iterations: int = 1
+    ) -> List[Dict[str, Any]]:
         """
         Execute a batch of queries multiple times.
 
@@ -126,18 +128,18 @@ class QueryExecutor:
 
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get summary of execution metrics."""
-        avg_latency = (self.total_latency / self.execution_count
-                       if self.execution_count > 0 else 0)
-        success_rate = ((self.success_count / self.execution_count * 100)
-                        if self.execution_count > 0 else 0)
+        avg_latency = self.total_latency / self.execution_count if self.execution_count > 0 else 0
+        success_rate = (
+            (self.success_count / self.execution_count * 100) if self.execution_count > 0 else 0
+        )
 
         return {
-            'total_executions': self.execution_count,
-            'successful_executions': self.success_count,
-            'failed_executions': self.error_count,
-            'success_rate_percent': round(success_rate, 2),
-            'average_latency_ms': round(avg_latency, 2),
-            'total_latency_ms': round(self.total_latency, 2)
+            "total_executions": self.execution_count,
+            "successful_executions": self.success_count,
+            "failed_executions": self.error_count,
+            "success_rate_percent": round(success_rate, 2),
+            "average_latency_ms": round(avg_latency, 2),
+            "total_latency_ms": round(self.total_latency, 2),
         }
 
     def reset_metrics(self) -> None:

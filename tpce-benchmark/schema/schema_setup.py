@@ -4,12 +4,12 @@ Handles keyspace and table creation.
 """
 
 import logging
-import os
 from typing import Optional
-from cassandra.cluster import Cluster, Session
-from cassandra.auth import PlainTextAuthProvider
-from cassandra.concurrent import execute_concurrent_with_args
+
 import yaml
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster, Session
+from cassandra.concurrent import execute_concurrent_with_args
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class SchemaSetup:
 
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             return yaml.safe_load(f)
 
     def connect(self) -> Session:
@@ -40,20 +40,19 @@ class SchemaSetup:
         Returns:
             Cassandra session object
         """
-        cassandra_config = self.config['cassandra']
+        cassandra_config = self.config["cassandra"]
 
         auth_provider = None
-        if cassandra_config.get('username'):
+        if cassandra_config.get("username"):
             auth_provider = PlainTextAuthProvider(
-                username=cassandra_config['username'],
-                password=cassandra_config.get('password', '')
+                username=cassandra_config["username"], password=cassandra_config.get("password", "")
             )
 
         self.cluster = Cluster(
-            contact_points=cassandra_config['contact_points'],
-            port=cassandra_config['port'],
+            contact_points=cassandra_config["contact_points"],
+            port=cassandra_config["port"],
             auth_provider=auth_provider,
-            protocol_version=cassandra_config.get('protocol_version', 4)
+            protocol_version=cassandra_config.get("protocol_version", 4),
         )
 
         self.session = self.cluster.connect()
@@ -68,11 +67,11 @@ class SchemaSetup:
         Args:
             replication_factor: Replication factor for the keyspace
         """
-        keyspace = self.config['cassandra']['keyspace']
+        keyspace = self.config["cassandra"]["keyspace"]
 
         create_keyspace_query = f"""
             CREATE KEYSPACE IF NOT EXISTS {keyspace}
-            WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': {replication_factor}}}
+            WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': {replication_factor}}}  # noqa: E501
         """
 
         self.session.execute(create_keyspace_query)
@@ -83,7 +82,7 @@ class SchemaSetup:
 
     def drop_keyspace(self) -> None:
         """Drop the TPC-E keyspace (use with caution)."""
-        keyspace = self.config['cassandra']['keyspace']
+        keyspace = self.config["cassandra"]["keyspace"]
         self.session.execute(f"DROP KEYSPACE IF EXISTS {keyspace}")
         logger.info(f"Keyspace '{keyspace}' dropped")
 
@@ -94,24 +93,24 @@ class SchemaSetup:
         Args:
             schema_file: Path to CQL schema file
         """
-        with open(schema_file, 'r') as f:
+        with open(schema_file, "r") as f:
             schema_content = f.read()
 
-        statements = [stmt.strip() for stmt in schema_content.split(';') if stmt.strip()]
+        statements = [stmt.strip() for stmt in schema_content.split(";") if stmt.strip()]
 
         for statement in statements:
-            if statement.startswith('--') or statement.upper().startswith('USE'):
+            if statement.startswith("--") or statement.upper().startswith("USE"):
                 continue
-            if 'DROP KEYSPACE' in statement.upper() or 'CREATE KEYSPACE' in statement.upper():
+            if "DROP KEYSPACE" in statement.upper() or "CREATE KEYSPACE" in statement.upper():
                 continue
 
             try:
                 self.session.execute(statement)
-                if 'CREATE TABLE' in statement.upper():
-                    table_name = statement.split('TABLE')[1].split('(')[0].strip()
+                if "CREATE TABLE" in statement.upper():
+                    table_name = statement.split("TABLE")[1].split("(")[0].strip()
                     logger.info(f"Created/verified table: {table_name}")
-                elif 'CREATE INDEX' in statement.upper():
-                    index_name = statement.split('INDEX')[1].split('ON')[0].strip()
+                elif "CREATE INDEX" in statement.upper():
+                    index_name = statement.split("INDEX")[1].split("ON")[0].strip()
                     logger.info(f"Created/verified index: {index_name}")
             except Exception as e:
                 logger.error(f"Error executing statement: {statement[:100]}...")
@@ -126,17 +125,43 @@ class SchemaSetup:
             True if all tables exist, False otherwise
         """
         expected_tables = [
-            'customer', 'customer_account', 'broker', 'security', 'trade',
-            'trade_history', 'settlement', 'company', 'exchange', 'industry',
-            'sector', 'daily_market', 'financial', 'last_trade', 'news_item',
-            'news_xref', 'holding', 'holding_summary', 'holding_history',
-            'watch_list', 'watch_item', 'address', 'zip_code', 'status_type',
-            'trade_type', 'charge', 'commission_rate', 'taxrate', 'customer_taxrate',
-            'trade_by_account', 'trade_by_symbol', 'holding_by_account',
-            'news_by_company', 'daily_market_by_symbol',
+            "customer",
+            "customer_account",
+            "broker",
+            "security",
+            "trade",
+            "trade_history",
+            "settlement",
+            "company",
+            "exchange",
+            "industry",
+            "sector",
+            "daily_market",
+            "financial",
+            "last_trade",
+            "news_item",
+            "news_xref",
+            "holding",
+            "holding_summary",
+            "holding_history",
+            "watch_list",
+            "watch_item",
+            "address",
+            "zip_code",
+            "status_type",
+            "trade_type",
+            "charge",
+            "commission_rate",
+            "taxrate",
+            "customer_taxrate",
+            "trade_by_account",
+            "trade_by_symbol",
+            "holding_by_account",
+            "news_by_company",
+            "daily_market_by_symbol",
         ]
 
-        keyspace = self.config['cassandra']['keyspace']
+        keyspace = self.config["cassandra"]["keyspace"]
 
         for table in expected_tables:
             query = (
@@ -159,7 +184,7 @@ class SchemaSetup:
             logger.info("Cassandra connection closed")
 
     @classmethod
-    def from_session(cls, session, config: dict) -> 'SchemaSetup':
+    def from_session(cls, session, config: dict) -> "SchemaSetup":
         """
         Create a SchemaSetup instance that reuses an existing Cassandra session.
 
@@ -176,8 +201,13 @@ class SchemaSetup:
         instance.session = session
         return instance
 
-    def snapshot_keyspace(self, source_keyspace: str, target_keyspace: str,
-                          schema_file: str, replication_factor: int = 1) -> None:
+    def snapshot_keyspace(
+        self,
+        source_keyspace: str,
+        target_keyspace: str,
+        schema_file: str,
+        replication_factor: int = 1,
+    ) -> None:
         """
         Create an isolated snapshot of *source_keyspace* in *target_keyspace*.
 
@@ -223,7 +253,7 @@ class SchemaSetup:
         """
         tables_result = self.session.execute(
             "SELECT table_name FROM system_schema.tables WHERE keyspace_name = %s",
-            (source_keyspace,)
+            (source_keyspace,),
         )
         tables = [row.table_name for row in tables_result]
 
@@ -232,36 +262,28 @@ class SchemaSetup:
             columns_result = self.session.execute(
                 "SELECT column_name, type FROM system_schema.columns "
                 "WHERE keyspace_name = %s AND table_name = %s",
-                (source_keyspace, table)
+                (source_keyspace, table),
             )
             columns = list(columns_result)
 
             # Skip counter tables — counter values cannot be INSERTed
-            if any(col.type == 'counter' for col in columns):
+            if any(col.type == "counter" for col in columns):
                 logger.info(f"Skipping counter table '{table}' (counter columns not copyable)")
                 continue
 
             col_names = [col.column_name for col in columns]
-            col_list = ', '.join(col_names)
-            placeholders = ', '.join(['?' for _ in col_names])
+            col_list = ", ".join(col_names)
+            placeholders = ", ".join(["?" for _ in col_names])
 
             insert_stmt = self.session.prepare(
-                f"INSERT INTO {target_keyspace}.{table} ({col_list}) "
-                f"VALUES ({placeholders})"
+                f"INSERT INTO {target_keyspace}.{table} ({col_list}) " f"VALUES ({placeholders})"
             )
 
-            rows = self.session.execute(
-                f"SELECT {col_list} FROM {source_keyspace}.{table}"
-            )
-            params = [
-                [getattr(row, col) for col in col_names]
-                for row in rows
-            ]
+            rows = self.session.execute(f"SELECT {col_list} FROM {source_keyspace}.{table}")
+            params = [[getattr(row, col) for col in col_names] for row in rows]
 
             if params:
-                execute_concurrent_with_args(
-                    self.session, insert_stmt, params, concurrency=50
-                )
+                execute_concurrent_with_args(self.session, insert_stmt, params, concurrency=50)
 
             logger.info(
                 f"Copied {len(params)} rows: "
@@ -300,8 +322,7 @@ class SchemaSetup:
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     setup = SchemaSetup()

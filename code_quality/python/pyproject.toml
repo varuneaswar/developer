@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# black
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+# ---------------------------------------------------------------------------
+# isort
+# ---------------------------------------------------------------------------
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = [".venv/*", "venv/*", "build/*", "dist/*"]
+
+# ---------------------------------------------------------------------------
+# pylint  (non-blocking in CI by default — see README for how to make blocking)
+# ---------------------------------------------------------------------------
+[tool.pylint.main]
+ignore-paths = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
+
+[tool.pylint.messages_control]
+# Start permissive; tighten over time.
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+# ---------------------------------------------------------------------------
+# mypy  (non-blocking in CI by default — see README for how to make blocking)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]

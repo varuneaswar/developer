@@ -2,8 +2,10 @@
 Configuration management for APScheduler Oracle project.
 Handles environment variables and global settings.
 """
+
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -30,7 +32,7 @@ class Config:
     )
 
     # Flask Configuration
-    FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
+    FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")  # nosec B104
     FLASK_PORT = int(os.getenv("FLASK_PORT", 5000))
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
