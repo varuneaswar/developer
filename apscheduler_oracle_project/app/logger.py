@@ -2,9 +2,10 @@
 Logging configuration for the APScheduler Oracle project.
 Provides centralized logging setup for all modules.
 """
+
 import logging
-from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 
 def setup_logger(name: str = "apscheduler_oracle", log_level: str = "INFO", log_file: str = None):

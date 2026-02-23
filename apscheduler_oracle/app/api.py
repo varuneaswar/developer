@@ -6,12 +6,12 @@ on scheduled jobs.
 """
 
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify
+
+from flask import Flask, jsonify, request
 
 from .config import Config
 from .logger import setup_logger
 from .scheduler import get_scheduler_manager
-
 
 logger = setup_logger("api")
 

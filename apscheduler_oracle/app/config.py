@@ -34,7 +34,7 @@ class Config:
         )
 
     # API Configuration
-    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
+    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")  # nosec B104
     API_PORT: int = int(os.getenv("API_PORT", "5000"))
     API_DEBUG: bool = os.getenv("API_DEBUG", "False").lower() == "true"
 

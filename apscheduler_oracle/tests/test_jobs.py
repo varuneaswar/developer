@@ -4,9 +4,10 @@ Unit tests for job execution module.
 Tests Bash script execution and Python module execution functionality.
 """
 
-import pytest
-from unittest.mock import Mock, patch
 import subprocess
+from unittest.mock import Mock, patch
+
+import pytest
 from app.jobs import execute_bash_script, execute_python_module, job_wrapper
 
 

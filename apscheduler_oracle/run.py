@@ -5,13 +5,13 @@ Main entry point for the APScheduler Oracle application.
 This script starts the Flask API server with the scheduler.
 """
 
-import sys
 import os
+import sys
 
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.api import run_api_server
+from app.api import run_api_server  # noqa: E402
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_api_server()

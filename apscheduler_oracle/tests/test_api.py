@@ -4,9 +4,10 @@ Unit tests for REST API module.
 Tests API endpoints for job scheduling management.
 """
 
-import pytest
-from unittest.mock import Mock, patch
 import json
+from unittest.mock import Mock, patch
+
+import pytest
 from app.api import create_app
 
 
