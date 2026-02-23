@@ -1,5 +1,5 @@
 """
-Schema setup module for TPC-C Cassandra benchmark.
+Schema setup module for TPC-E Cassandra benchmark.
 Handles keyspace and table creation.
 """
 
@@ -15,112 +15,98 @@ logger = logging.getLogger(__name__)
 
 
 class SchemaSetup:
-    """Handles Cassandra schema setup for TPC-C benchmark."""
-    
+    """Handles Cassandra schema setup for TPC-E benchmark."""
+
     def __init__(self, config_path: str = "config/cassandra_config.yaml"):
         """
         Initialize schema setup with configuration.
-        
+
         Args:
             config_path: Path to Cassandra configuration file
         """
         self.config = self._load_config(config_path)
         self.cluster: Optional[Cluster] = None
         self.session: Optional[Session] = None
-        
+
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
-    
+
     def connect(self) -> Session:
         """
         Establish connection to Cassandra cluster.
-        
+
         Returns:
             Cassandra session object
         """
         cassandra_config = self.config['cassandra']
-        
-        # Setup authentication if username provided
+
         auth_provider = None
         if cassandra_config.get('username'):
             auth_provider = PlainTextAuthProvider(
                 username=cassandra_config['username'],
                 password=cassandra_config.get('password', '')
             )
-        
-        # Create cluster connection
+
         self.cluster = Cluster(
             contact_points=cassandra_config['contact_points'],
             port=cassandra_config['port'],
             auth_provider=auth_provider,
             protocol_version=cassandra_config.get('protocol_version', 4)
         )
-        
+
         self.session = self.cluster.connect()
         logger.info(f"Connected to Cassandra cluster at {cassandra_config['contact_points']}")
-        
+
         return self.session
-    
+
     def create_keyspace(self, replication_factor: int = 3) -> None:
         """
-        Create TPC-C keyspace if it doesn't exist.
-        
+        Create TPC-E keyspace if it doesn't exist.
+
         Args:
             replication_factor: Replication factor for the keyspace
         """
         keyspace = self.config['cassandra']['keyspace']
-        
-        # For local testing, use SimpleStrategy with RF=1
-        # For production, adjust based on cluster size
+
         create_keyspace_query = f"""
             CREATE KEYSPACE IF NOT EXISTS {keyspace}
             WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': {replication_factor}}}
         """
-        
+
         self.session.execute(create_keyspace_query)
         logger.info(f"Keyspace '{keyspace}' created/verified")
-        
-        # Use the keyspace
+
         self.session.set_keyspace(keyspace)
         logger.info(f"Using keyspace '{keyspace}'")
-    
+
     def drop_keyspace(self) -> None:
-        """Drop the TPC-C keyspace (use with caution)."""
+        """Drop the TPC-E keyspace (use with caution)."""
         keyspace = self.config['cassandra']['keyspace']
-        
-        drop_query = f"DROP KEYSPACE IF EXISTS {keyspace}"
-        self.session.execute(drop_query)
+        self.session.execute(f"DROP KEYSPACE IF EXISTS {keyspace}")
         logger.info(f"Keyspace '{keyspace}' dropped")
-    
-    def create_tables(self, schema_file: str = "schema/tpcc_schema.cql") -> None:
+
+    def create_tables(self, schema_file: str = "schema/tpce_schema.cql") -> None:
         """
-        Create all TPC-C tables from schema file.
-        
+        Create all TPC-E tables from schema file.
+
         Args:
             schema_file: Path to CQL schema file
         """
-        # Read schema file
         with open(schema_file, 'r') as f:
             schema_content = f.read()
-        
-        # Split into individual statements
+
         statements = [stmt.strip() for stmt in schema_content.split(';') if stmt.strip()]
-        
-        # Execute each statement
+
         for statement in statements:
-            # Skip comments and USE statements (already using keyspace)
             if statement.startswith('--') or statement.upper().startswith('USE'):
                 continue
-            
-            # Skip DROP and CREATE KEYSPACE (handled separately)
             if 'DROP KEYSPACE' in statement.upper() or 'CREATE KEYSPACE' in statement.upper():
                 continue
-            
+
             try:
                 self.session.execute(statement)
-                # Extract table name for logging
                 if 'CREATE TABLE' in statement.upper():
                     table_name = statement.split('TABLE')[1].split('(')[0].strip()
                     logger.info(f"Created/verified table: {table_name}")
@@ -131,36 +117,41 @@ class SchemaSetup:
                 logger.error(f"Error executing statement: {statement[:100]}...")
                 logger.error(f"Error: {e}")
                 raise
-    
+
     def verify_schema(self) -> bool:
         """
-        Verify that all expected tables exist.
-        
+        Verify that all expected TPC-E tables exist.
+
         Returns:
             True if all tables exist, False otherwise
         """
         expected_tables = [
-            'warehouse', 'district', 'customer', 'customer_by_name',
-            'item', 'stock', 'orders', 'orders_by_customer',
-            'new_order', 'order_line', 'history'
+            'customer', 'customer_account', 'broker', 'security', 'trade',
+            'trade_history', 'settlement', 'company', 'exchange', 'industry',
+            'sector', 'daily_market', 'financial', 'last_trade', 'news_item',
+            'news_xref', 'holding', 'holding_summary', 'holding_history',
+            'watch_list', 'watch_item', 'address', 'zip_code', 'status_type',
+            'trade_type', 'charge', 'commission_rate', 'taxrate', 'customer_taxrate',
+            'trade_by_account', 'trade_by_symbol', 'holding_by_account',
+            'news_by_company', 'daily_market_by_symbol',
         ]
-        
+
         keyspace = self.config['cassandra']['keyspace']
-        
+
         for table in expected_tables:
-            query = f"""
-                SELECT table_name FROM system_schema.tables 
-                WHERE keyspace_name = '{keyspace}' AND table_name = '{table}'
-            """
+            query = (
+                f"SELECT table_name FROM system_schema.tables "
+                f"WHERE keyspace_name = '{keyspace}' AND table_name = '{table}'"
+            )
             result = self.session.execute(query)
             if not result.one():
                 logger.error(f"Table '{table}' not found in keyspace '{keyspace}'")
                 return False
             logger.info(f"Verified table: {table}")
-        
+
         logger.info("All tables verified successfully")
         return True
-    
+
     def close(self) -> None:
         """Close Cassandra connection."""
         if self.cluster:
@@ -226,10 +217,6 @@ class SchemaSetup:
         Counter tables are skipped because counter columns cannot be set via
         INSERT; they always start at zero in the snapshot keyspace.
 
-        Rows are inserted concurrently using
-        :func:`cassandra.concurrent.execute_concurrent_with_args` so that the
-        copy completes quickly even for large tables.
-
         Args:
             source_keyspace: Name of the source keyspace
             target_keyspace: Name of the destination keyspace
@@ -294,7 +281,7 @@ class SchemaSetup:
     def setup_complete_schema(self, replication_factor: int = 1) -> None:
         """
         Complete schema setup: connect, create keyspace, and create tables.
-        
+
         Args:
             replication_factor: Replication factor for the keyspace (default 1 for testing)
         """
@@ -312,12 +299,10 @@ class SchemaSetup:
 
 
 if __name__ == "__main__":
-    # Setup logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    
-    # Run schema setup
+
     setup = SchemaSetup()
     setup.setup_complete_schema()

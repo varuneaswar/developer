@@ -1,0 +1,16 @@
+cassandra:
+  contact_points: ["127.0.0.1"]
+  port: 9042
+  keyspace: "tpce_benchmark"
+  username: "cassandra"
+  password: "cassandra"
+  protocol_version: 4
+  
+connection_pool:
+  core_connections_per_host: 2
+  max_connections_per_host: 8
+  max_requests_per_connection: 32768
+  
+timeouts:
+  connect_timeout: 10
+  request_timeout: 30

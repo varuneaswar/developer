@@ -12,7 +12,7 @@ benchmark:
   # and the base keyspace is fully preserved after every run.
   snapshot_before_benchmark: true   # create isolated snapshot keyspace
   cleanup_benchmark_keyspace: true  # drop snapshot keyspace after the run
-  schema_file: "schema/tpcc_schema.cql"  # CQL file used to recreate schema in snapshot
+  schema_file: "schema/tpce_schema.cql"  # CQL file used to recreate schema in snapshot
   
   query_distribution:
     select: 60  # 60% of operations
@@ -26,10 +26,11 @@ benchmark:
     complex: 20
     
 data_generation:
-  num_warehouses: 10
-  num_districts_per_warehouse: 10
-  num_customers_per_district: 3000
-  num_items: 100000
+  num_customers: 1000
+  num_brokers: 100
+  num_securities: 5000
+  num_companies: 1000
+  num_trades: 10000
   
 metrics:
   collection_interval: 10  # seconds
